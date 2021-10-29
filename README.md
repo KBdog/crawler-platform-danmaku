@@ -14,6 +14,7 @@ selenium、springboot、poi、chromedriver
 
 ```yml
 server:
+  #端口号
   port: 8080
 local:
   proxy:
@@ -42,30 +43,35 @@ crawler:
 #### 斗鱼
 GET `/crawler/danmaku/douyu`
 
-| 参数 |       描述        |             例子              |
-| :--: | :---------------: | :---------------------------: |
-| url  | 斗鱼直播间url地址 | https://www.douyu.com/1126960 |
+| 参数 |       描述        |                             例子                             |
+| :--: | :---------------: | :----------------------------------------------------------: |
+| url  | 斗鱼直播间url地址 | http://localhost:8080/crawler/danmaku/douyu?url=https://www.douyu.com/1126960 |
 
 #### 虎牙
 GET `/crawler/danmaku/huya`
 
-| 参数 |       描述        |        例子        |
-| :--: | :---------------: | :----------------: |
-| url  | 虎牙直播间url地址 | https://huya.com/s |
+| 参数 |       描述        |                             例子                             |
+| :--: | :---------------: | :----------------------------------------------------------: |
+| url  | 虎牙直播间url地址 | http://localhost:8080/crawler/danmaku/huya?url=https://huya.com/s |
 
 #### bilibili
 GET `/crawler/danmaku/bilibili`
 
-| 参数 |       描述       |                例子                |
-| :--: | :--------------: | :--------------------------------: |
-| url  | b站直播间url地址 | https://live.bilibili.com/22637261 |
+| 参数 |       描述       |                             例子                             |
+| :--: | :--------------: | :----------------------------------------------------------: |
+| url  | b站直播间url地址 | http://localhost:8080/crawler/danmaku/bilibili?url=https://live.bilibili.com/22637261 |
 
 #### 抖音
 GET `/crawler/danmaku/douyin`
 
-| 参数 |          描述           |                 例子                 |
-| :--: | :---------------------: | :----------------------------------: |
-| url  | 抖音网页端直播间url地址 | https://live.douyin.com/392228830217 |
+| 参数 |          描述           |                             例子                             |
+| :--: | :---------------------: | :----------------------------------------------------------: |
+| url  | 抖音网页端直播间url地址 | http://localhost:8080/crawler/danmaku/douyin?url=https://live.douyin.com/392228830217 |
 
 #### 截断或停止当前爬虫任务
 GET `/crawler/danmaku/shutdown`
+
+|                      例子                      |
+| :--------------------------------------------: |
+| http://localhost:8080/crawler/danmaku/shutdown |
+

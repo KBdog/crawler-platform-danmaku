@@ -1,4 +1,5 @@
 server:
+  #端口号
   port: 8080
 local:
   proxy:
