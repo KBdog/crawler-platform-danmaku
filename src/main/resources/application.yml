@@ -4,7 +4,7 @@ server:
 local:
   proxy:
     #是否使用代理
-    using: false
+    using: true
     #代理ip端口
     host: 127.0.0.1
     port: 1080

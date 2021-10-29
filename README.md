@@ -2,7 +2,7 @@
 上班摸鱼写的，闲着蛋疼
 
 ### 使用技术或依赖
-selenium、springboot、poi、chromedriver
+selenium、jsoup、springboot、poi、chromedriver
 
 ### 可抓取的直播平台
 斗鱼、虎牙、bilibili、抖音
