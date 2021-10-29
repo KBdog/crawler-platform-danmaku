@@ -1,0 +1,21 @@
+server:
+  port: 8080
+local:
+  proxy:
+    #是否使用代理
+    using: false
+    #代理ip端口
+    host: 127.0.0.1
+    port: 1080
+  chrome:
+    #谷歌驱动本地路径
+    chromeDriverPath: C:\Users\Lenovo\Desktop\chrome_driver\chromedriver.exe
+crawler:
+  #爬取时间:单位为分钟
+  time: 30
+  #导出相关
+  export:
+    #抓取到的弹幕导出excel路径
+    filePath: C:\Users\Lenovo\Desktop\export
+  #导出报表 / 打印日志显示日期格式
+  timeFormat: 'yyyy-MM-dd_HH-mm-ss'
