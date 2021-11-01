@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SeleniumTestApplication {
+public class DanmakuCrawlerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SeleniumTestApplication.class, args);
+        SpringApplication.run(DanmakuCrawlerApplication.class, args);
     }
 
 }

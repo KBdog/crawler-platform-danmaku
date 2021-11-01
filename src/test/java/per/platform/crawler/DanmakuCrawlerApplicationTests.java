@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 @SpringBootTest
 @Slf4j
-class SeleniumTestApplicationTests {
+class DanmakuCrawlerApplicationTests {
     @Value("${local.chrome.chromeDriverPath}")
     private String chromeDriverPath;
     @Value("${local.proxy.host}")
