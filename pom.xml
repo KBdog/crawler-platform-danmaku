@@ -39,6 +39,13 @@
             <artifactId>fastjson</artifactId>
             <version>1.2.62</version>
         </dependency>
+        <!--okhttp-->
+<!--        <dependency>-->
+<!--            <groupId>com.squareup.okhttp3</groupId>-->
+<!--            <artifactId>okhttp</artifactId>-->
+<!--            <version>4.9.0</version>-->
+<!--        </dependency>-->
+
         <!--poi-->
         <!-- https://mvnrepository.com/artifact/org.apache.poi/poi -->
         <dependency>

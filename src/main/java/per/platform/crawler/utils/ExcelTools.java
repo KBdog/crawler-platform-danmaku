@@ -1,5 +1,6 @@
 package per.platform.crawler.utils;
 
+import per.platform.crawler.model.CarDealer;
 import per.platform.crawler.model.Comment;
 import per.platform.crawler.model.News;
 import org.apache.poi.ss.usermodel.BorderStyle;
@@ -169,4 +170,59 @@ public class ExcelTools {
             return flag;
         }
     }
+
+    public static boolean exportExcelForDouyinV4(List<CarDealer>dealerList, String[]titles, FileOutputStream fos){
+        boolean flag=false;
+        //1.先创建一个工作簿workbook,对应于一个excel文件
+        XSSFWorkbook workbook=new XSSFWorkbook();
+        //2.在工作簿中创建一个sheet,对应于excel中的sheet,并设置宽度
+        XSSFSheet sheet=workbook.createSheet("sheet1");
+        sheet.setDefaultColumnWidth(50);
+        //3.在sheet中添加表头第0行
+        XSSFRow row=sheet.createRow(0);
+        //4.创建单元格样式
+        XSSFCellStyle cellStyle = workbook.createCellStyle();
+        //居中样式
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        //背景
+        cellStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        //边框
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+        //模式
+        cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        //5.设置表头,添加列标题
+        XSSFCell cell=null;
+        for(int i=0;i<titles.length;i++){
+            //创建表头单元格
+            cell=row.createCell(i);
+            //设置列名
+            cell.setCellValue(titles[i]);
+            //设置列样式
+            cell.setCellStyle(cellStyle);
+        }
+        int i=1;
+        for (CarDealer dealer : dealerList) {
+            row=sheet.createRow(i);
+            row.createCell(0).setCellValue(dealer.getCityName());
+            row.createCell(1).setCellValue(dealer.getBrandName());
+            row.createCell(2).setCellValue(dealer.getDealerName());
+            row.createCell(3).setCellValue(dealer.getDealerAddress());
+            row.createCell(4).setCellValue(dealer.getDealerPhone());
+            i++;
+        }
+        //8.将文件写出客户端
+        try {
+            workbook.write(fos);
+            fos.flush();
+            flag=true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            return flag;
+        }
+    }
+
 }
