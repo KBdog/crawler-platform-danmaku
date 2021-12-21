@@ -29,6 +29,8 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @SpringBootTest
 @Slf4j
@@ -790,7 +792,7 @@ class DanmakuCrawlerApplicationTests {
                 String cityKey = iterator.next();
                 JSONObject cityObj = cityListObj.getJSONObject(cityKey);
                 //城市名
-                String cityName = cityObj.getString("name");
+                String cityName= provinceName+cityObj.getString("name");
                 JSONArray storeArray = cityObj.getJSONArray("store");
                 for(int i=0;i<storeArray.size();i++){
                     JSONObject storeObj = storeArray.getJSONObject(i);
@@ -846,7 +848,12 @@ class DanmakuCrawlerApplicationTests {
         for(int i=0;i<jsonArray.size();i++){
             JSONObject dealerObj = jsonArray.getJSONObject(i);
             CarDealer dealer=new CarDealer();
-            String cityName = dealerObj.getString("city");
+            String cityName=null;
+            if(dealerObj.getString("province").equals(dealerObj.getString("city"))){
+                cityName=dealerObj.getString("province");
+            }else {
+                cityName = dealerObj.getString("province")+dealerObj.getString("city");
+            }
             String brandName = dealerObj.getString("brand");
             String dealerName = dealerObj.getString("name");
             String dealerAddress = dealerObj.getString("address");
@@ -933,7 +940,12 @@ class DanmakuCrawlerApplicationTests {
             for(int i=0;i<jsonArray.size();i++){
                 CarDealer dealer=new CarDealer();
                 JSONObject dealerObj = jsonArray.getJSONObject(i);
-                String cityName = dealerObj.getString("city");
+                String cityName=null;
+                if(dealerObj.getString("province").equals(dealerObj.getString("city"))){
+                    cityName=dealerObj.getString("province");
+                }else {
+                    cityName = dealerObj.getString("province")+dealerObj.getString("city");
+                }
                 String dealerName = dealerObj.getString("conpanyName");
                 String dealerShortName = dealerObj.getString("conpanyShortName");
                 String dealerAddress=dealerObj.getString("area")+dealerObj.getString("address");
@@ -1039,12 +1051,21 @@ class DanmakuCrawlerApplicationTests {
                         dealer.setDealerPhone(dealerPhone);
                     }
                     //城市
-                    String cityName=dealerAddress.substring(0,3);
-                    if(dealerAddress.endsWith("省")||dealerAddress.endsWith("区")){
-                        cityName=dealerAddress.substring(0,6);
-                    }
-                    if(!cityName.endsWith("市")){
-                        cityName=dealerName.substring(0,2);
+                    //城市正则
+                    String cityName = null;
+                    String cityRegex="^(.*(市|区|县))";
+                    Pattern pattern=Pattern.compile(cityRegex);
+                    Matcher matcher = pattern.matcher(dealerAddress);
+                    if(matcher.find()){
+                        cityName=matcher.group(0);
+                    }else {
+                        cityName=dealerAddress.substring(0,3);
+                        if(dealerAddress.endsWith("省")||dealerAddress.endsWith("区")){
+                            cityName=dealerAddress.substring(0,6);
+                        }
+                        if(!cityName.endsWith("市")){
+                            cityName=dealerName.substring(0,2);
+                        }
                     }
                     dealer.setCityName(cityName);
                     dealer.setDealerName(dealerName);
@@ -1120,7 +1141,16 @@ class DanmakuCrawlerApplicationTests {
                     String dealerAddress = dealerObj.getString("Address");
                     String dealerName = dealerObj.getString("title");
                     String dealerPhone = dealerObj.getString("SalesHotline");
-                    String cityName = dealerName.substring(0, 2)+"市/县";
+                    //城市正则
+                    String cityName = null;
+                    String cityRegex="^(.*(市|区))";
+                    Pattern pattern=Pattern.compile(cityRegex);
+                    Matcher matcher = pattern.matcher(dealerAddress);
+                    if(matcher.find()){
+                        cityName=matcher.group(0);
+                    }else {
+                        cityName = dealerName.substring(0, 2);
+                    }
                     dealer.setCityName(cityName);
                     dealer.setBrandName(brandName);
                     dealer.setDealerAddress(dealerAddress);
