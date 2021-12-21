@@ -171,7 +171,7 @@ public class ExcelTools {
         }
     }
 
-    public static boolean exportExcelForDouyinV4(List<CarDealer>dealerList, String[]titles, FileOutputStream fos){
+    public static boolean exportExcelForCarDealerV4(List<CarDealer>dealerList, String[]titles, FileOutputStream fos){
         boolean flag=false;
         //1.先创建一个工作簿workbook,对应于一个excel文件
         XSSFWorkbook workbook=new XSSFWorkbook();

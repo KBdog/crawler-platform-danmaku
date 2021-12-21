@@ -22,7 +22,6 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import per.platform.crawler.utils.JSONTools;
 import per.platform.crawler.utils.OkHttpTools;
 
 import java.io.*;
@@ -823,7 +822,7 @@ class DanmakuCrawlerApplicationTests {
         File file=new File("C:\\Users\\Lenovo\\Desktop\\work\\issue7\\广汇汽车经销商数据.xlsx");
         FileOutputStream fos=new FileOutputStream(file);
         try {
-            ExcelTools.exportExcelForDouyinV4(resultList,titles,fos);
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
             log.info("报表已打印完成!");
         }catch (Exception e){
             log.error(e.getMessage());
@@ -875,7 +874,7 @@ class DanmakuCrawlerApplicationTests {
         File file=new File("C:\\Users\\Lenovo\\Desktop\\work\\issue7\\中升集团经销商数据.xlsx");
         FileOutputStream fos=new FileOutputStream(file);
         try {
-            ExcelTools.exportExcelForDouyinV4(resultList,titles,fos);
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
             log.info("报表已打印完成!");
         }catch (Exception e){
             log.error(e.getMessage());
@@ -970,7 +969,7 @@ class DanmakuCrawlerApplicationTests {
         File file=new File("C:\\Users\\Lenovo\\Desktop\\work\\issue7\\永达汽车经销商数据.xlsx");
         FileOutputStream fos=new FileOutputStream(file);
         try {
-            ExcelTools.exportExcelForDouyinV4(resultList,titles,fos);
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
             log.info("报表已打印完成!");
         }catch (Exception e){
             log.error(e.getMessage());
@@ -1084,7 +1083,7 @@ class DanmakuCrawlerApplicationTests {
         File file=new File("C:\\Users\\Lenovo\\Desktop\\work\\issue7\\元通汽车经销商数据.xlsx");
         FileOutputStream fos=new FileOutputStream(file);
         try {
-            ExcelTools.exportExcelForDouyinV4(resultList,titles,fos);
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
             log.info("报表已打印完成!");
         }catch (Exception e){
             log.error(e.getMessage());
@@ -1167,7 +1166,7 @@ class DanmakuCrawlerApplicationTests {
         File file=new File("C:\\Users\\Lenovo\\Desktop\\work\\issue7\\大昌行汽车经销商数据.xlsx");
         FileOutputStream fos=new FileOutputStream(file);
         try {
-            ExcelTools.exportExcelForDouyinV4(resultList,titles,fos);
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
             log.info("报表已打印完成!");
         }catch (Exception e){
             log.error(e.getMessage());
