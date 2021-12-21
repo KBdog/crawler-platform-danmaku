@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author kbdog
- * @package per.kbwebstack.crawler.api.config
+ * @package per.platform.crawler.config
  * @description okhttp客户端配置
  * @date 2021/8/10 17:51
  */

@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import java.text.SimpleDateFormat;
 
 /**
- * @author lipeiyu
- * @package com.selenium.test.config
+ * @author kbdog
+ * @package per.platform.crawler.config
  * @description
  * @date 2021/10/26 10:38
  */

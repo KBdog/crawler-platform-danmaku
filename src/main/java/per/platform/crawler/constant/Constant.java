@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * @author kbdog
- * @package per.kbwebstack.crawler.api.constant
+ * @package per.platform.crawler.constant
  * @description 默认常量
  * @date 2021/8/10 23:35
  */

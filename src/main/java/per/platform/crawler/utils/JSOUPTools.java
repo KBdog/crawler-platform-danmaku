@@ -13,7 +13,7 @@ import java.net.Proxy;
 
 /**
  * @author kbdog
- * @package per.kbwebstack.crawler.api.utils
+ * @package per.platform.crawler.utils
  * @description jsoup解析工具类
  * @date 2021/8/10 22:32
  */

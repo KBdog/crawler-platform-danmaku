@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author lipeiyu
- * @package com.selenium.test.config
+ * @author kbdog
+ * @package per.platform.crawler.config
  * @description
  * @date 2021/10/26 9:52
  */

@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * @author kbdog
- * @package per.kbwebstack.crawler.api.utils
+ * @package per.platform.crawler.utils
  * @description json格式化工具类
  * @date 2021/8/16 15:36
  */

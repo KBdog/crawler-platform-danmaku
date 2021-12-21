@@ -9,8 +9,8 @@ import org.openqa.selenium.WebElement;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author lipeiyu
- * @package com.selenium.test.utils
+ * @author kbdog
+ * @package per.platform.crawler.utils
  * @description 谷歌驱动工具类
  * @date 2021/10/22 14:48
  */

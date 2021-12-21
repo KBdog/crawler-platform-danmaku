@@ -3,7 +3,7 @@ package per.platform.crawler.model;
 import lombok.Data;
 
 /**
- * @author lipeiyu
+ * @author kbdog
  * @package per.platform.crawler.model
  * @description 汽车经销商实体
  * @date 2021/12/20 14:20

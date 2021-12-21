@@ -25,8 +25,8 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * @author lipeiyu
- * @package com.selenium.test.controller
+ * @author kbdog
+ * @package per.platform.crawler.controller
  * @description 爬各大平台直播间弹幕接口
  * @date 2021/10/26 9:57
  */
