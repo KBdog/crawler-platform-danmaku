@@ -793,6 +793,9 @@ class DanmakuCrawlerApplicationTests {
                 JSONObject cityObj = cityListObj.getJSONObject(cityKey);
                 //城市名
                 String cityName= provinceName+cityObj.getString("name");
+                if(provinceName.equals(cityObj.getString("name"))){
+                    cityName=provinceName;
+                }
                 JSONArray storeArray = cityObj.getJSONArray("store");
                 for(int i=0;i<storeArray.size();i++){
                     JSONObject storeObj = storeArray.getJSONObject(i);
