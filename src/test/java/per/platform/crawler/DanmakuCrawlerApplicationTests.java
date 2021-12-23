@@ -22,11 +22,13 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import per.platform.crawler.utils.JSONTools;
 import per.platform.crawler.utils.OkHttpTools;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CompletionService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,431 +48,258 @@ class DanmakuCrawlerApplicationTests {
     @Autowired
     private WebDriver driver;
 
+    //2021年12月23日09:28:28 新增目录
+    private String excelOutPutDir="C:\\Users\\Lenovo\\Desktop\\work\\issue7\\part2\\";
+    @Autowired
+    private CompletionService<String>threadPool;
+
     @Test
     void contextLoads() {
     }
 
-    @Test
-    void testRunChromeDriver() {
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        options.addArguments("--proxy-server=http://"+proxyString);
-        WebDriver driver=new ChromeDriver(options);
-        try {
-            driver.get("https://author.baidu.com/home?from=bjh_article&app_id=1683791004794452");
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            WebElement articlePage = driver.findElement(By.xpath("/html/body/div[2]/div/div[4]/div[1]/div[1]/div/div[1]/div[1]/div/div[4]"));
-            articlePage.click();
-            WebElement webElement_1 = driver.findElement(By.xpath("/html"));
-            String content = webElement_1.getAttribute("outerHTML");
-            Document document_1 = Jsoup.parse(content);
-            Element contentNum = document_1.getElementsByClass("info-num").first();
-            int num = Integer.parseInt(contentNum.text());
-            System.out.println("共有"+num+"篇内容");
-            int sign=1;
-            JavascriptExecutor jse = (JavascriptExecutor) driver;
-            //翻页
-            while(true){
-                System.out.println("第"+sign+"次翻页");
-                WebElement webElement_2 = driver.findElement(By.xpath("/html"));
-                content = webElement_2.getAttribute("outerHTML");
-                Document document_2 = Jsoup.parse(content);
-                Elements elements = document_2.getElementsByClass("text-title line-clamp-2");
-                System.out.println("目前已收录文章的总量:"+elements.size());
-                for (Element element : elements) {
-                    System.out.println(element.text());
-                }
-                //到底了
-                if(document_2.getElementsByClass("s-loader-container state-2").first()!=null){
-                    break;
-                }
-                jse.executeScript("window.scrollTo(0, document.body.scrollHeight)");
-                sign++;
-                Thread.sleep(2000);
-            }
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            WebElement webElement_2 = driver.findElement(By.xpath("/html"));
-            content = webElement_2.getAttribute("outerHTML");
-            Document document = Jsoup.parse(content);
-            Elements elements = document.getElementsByClass("text-title line-clamp-2");
-            for (Element element : elements) {
-                System.out.println(element.text());
-            }
-        }catch (Exception e){
-            System.out.println("异常:"+e.getMessage());
-        }finally {
-            //关闭全部驱动
-            driver.quit();
-        }
-    }
-
-    @Test
-    void testGetNewsFromBaidu(){
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
-//        arguments.add("--headless");
-//        arguments.add("--start-maximized");
-//        arguments.add("--user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        try {
-            //拿这个新闻10页数据
-            int flag=0;
-            while(true){
-                String url="https://www.google.co.jp/search?q=github&start="+(flag*10);
-                log.info("url:"+url);
-                driver.get(url);
-                flag++;
-                Document document = DriverTools.parseCurrentWebPage(5,driver);
-                Elements newsItem = document.getElementsByClass("g");
-                if(newsItem==null||newsItem.size()==0){
-                    log.info("=====================全部相关新闻已抓取完毕=====================");
-                    break;
-                }
-                for (Element element : newsItem) {
-                    log.info("");
-                    Element h3 = element.getElementsByTag("h3").first();
-                    if(h3!=null){
-                        log.info(h3.text());
-                    }
-                    Element a = element.getElementsByTag("a").first();
-                    log.info(a.attr("href"));
-                }
-                log.info("=====================第"+flag+"页已抓取完毕=====================");
-            }
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            //关闭全部驱动
-            driver.quit();
-        }
-    }
-
-    @Test
-    void testGetNewsFromNetease() {
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
-//        arguments.add("--headless");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        Map<String,String>resultMap=new HashMap<>();
-        FileOutputStream fos=null;
-        try {
-            Map<String,String>newsMap=new HashMap<>();
-            newsMap.put("国际","https://news.163.com/world/");
-            newsMap.put("航空","https://news.163.com/air/");
-            newsMap.put("军事","https://war.163.com/");
-            newsMap.put("国内","https://news.163.com/domestic/");
-            for (Map.Entry<String,String>tmp:newsMap.entrySet()){
-                String tagName=tmp.getKey();
-                String url=tmp.getValue();
-                log.info("========================================专栏 "+tagName+"========================================");
-                driver.get(url);
-                log.info("url:"+url);
-                Document document = DriverTools.parseCurrentWebPage(5, driver);
-                Elements newsList = document.getElementsByClass("data_row news_article clearfix ");
-                for (Element newsItem : newsList) {
-                    Element h3 = newsItem.getElementsByTag("h3").first();
-                    if(h3!=null){
-                        String link = h3.getElementsByTag("a").attr("href");
-                        resultMap.put(h3.text(),link);
-                        log.info(h3.text()+" "+link);
-                    }
-                }
-                log.info("");
-            }
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            long currentTimeStamp = System.currentTimeMillis();
-            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\网易新闻_"+format.format(currentTimeStamp)+".xlsx");
-            fos=new FileOutputStream(excelFile);
-            String titles[]=new String[]{"标题","链接"};
-            boolean flag = ExcelTools.exportExcelForNews(resultMap, titles, fos);
-            if(flag){
-                log.info("导出报表成功! "+excelFile.getAbsolutePath());
-            }else {
-                log.info("导出报表失败! "+excelFile.getAbsolutePath());
-            }
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            if(fos!=null){
-                try {
-                    fos.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            driver.quit();
-        }
-    }
-
-    @Test
-    void testGetNewsFromNeteaseV2(){
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
-//        arguments.add("--headless");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        List<News>resultList=new ArrayList<>();
-        FileOutputStream fos=null;
-        try {
-            Map<String,String>newsMap=new HashMap<>();
-            newsMap.put("国际","https://news.163.com/world/");
-            newsMap.put("航空","https://news.163.com/air/");
-            newsMap.put("军事","https://war.163.com/");
-            newsMap.put("国内","https://news.163.com/domestic/");
-            for (Map.Entry<String,String>tmp:newsMap.entrySet()){
-                String tagName=tmp.getKey();
-                String url=tmp.getValue();
-                log.info("========================================专栏 "+tagName+"========================================");
-                driver.get(url);
-                log.info("url:"+url);
-                Document document = DriverTools.parseCurrentWebPage(5, driver);
-                Elements newsList = document.getElementsByClass("data_row news_article clearfix ");
-                for (Element newsItem : newsList) {
-                    Element h3 = newsItem.getElementsByTag("h3").first();
-                    if(h3!=null){
-                        String publishTime="";
-                        String title=h3.text();
-                        String link = h3.getElementsByTag("a").attr("href");
-                        try {
-                            publishTime=newsItem.getElementsByClass("time").first().text();
-                        }catch (NullPointerException e){
-                            log.info("新闻标题:"+title+" 没有发布时间");
-                        }
-                        News news=new News();
-                        news.setNewsTitle(title);
-                        news.setPublishDate(publishTime);
-                        news.setNewsLink(link);
-                        resultList.add(news);
-                        if(publishTime.equals("")){
-                            log.info(h3.text()+" "+link);
-                        }else {
-                            log.info(publishTime+" "+h3.text()+" "+link);
-                        }
-
-                    }
-                }
-                log.info("");
-            }
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            long currentTimeStamp = System.currentTimeMillis();
-            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\网易新闻_"+format.format(currentTimeStamp)+".xlsx");
-            fos=new FileOutputStream(excelFile);
-            String titles[]=new String[]{"日期","标题","链接"};
-            boolean flag = ExcelTools.exportExcelForNewsV2(resultList, titles, fos);
-            if(flag){
-                log.info("导出报表成功! "+excelFile.getAbsolutePath());
-            }else {
-                log.info("导出报表失败! "+excelFile.getAbsolutePath());
-            }
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            if(fos!=null){
-                try {
-                    fos.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            driver.quit();
-        }
-    }
-
-    @Test
-    void testGetNewsFromTencentNews(){
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
-        arguments.add("--headless");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        List<News>resultList=new ArrayList<>();
-        FileOutputStream fos=null;
-        try {
-            Map<String,String>newsMap=new HashMap<>();
-            newsMap.put("军事","https://new.qq.com/ch/milite/");
-            newsMap.put("国际","https://new.qq.com/ch/world/");
-            for (Map.Entry<String,String>tmp:newsMap.entrySet()){
-                String tagName=tmp.getKey();
-                String url=tmp.getValue();
-                log.info("========================================专栏 "+tagName+"========================================");
-                driver.get(url);
-                log.info("url:"+url);
-                Document document = DriverTools.parseCurrentWebPage(5, driver);
-                Elements newsList = document.getElementsByClass("item cf itme-ls");
-                for (Element newsItem : newsList) {
-                    Element h3 = newsItem.getElementsByTag("h3").first();
-                    if(h3!=null){
-                        String publishTime="";
-                        String title=h3.text();
-                        String link = h3.getElementsByTag("a").attr("href");
-                        try {
-                            publishTime=newsItem.getElementsByClass("time").first().text();
-                        }catch (NullPointerException e){
-                            log.info("新闻标题:"+title+" 没有发布时间");
-                        }
-                        News news=new News();
-                        news.setNewsTitle(title);
-                        news.setPublishDate(publishTime);
-                        news.setNewsLink(link);
-                        resultList.add(news);
-                        if(publishTime.equals("")){
-                            log.info(h3.text()+" "+link);
-                        }else {
-                            log.info(publishTime+" "+h3.text()+" "+link);
-                        }
-
-                    }
-                }
-                log.info("");
-            }
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            long currentTimeStamp = System.currentTimeMillis();
-            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\腾讯新闻_"+format.format(currentTimeStamp)+".xlsx");
-            fos=new FileOutputStream(excelFile);
-            String titles[]=new String[]{"日期","标题","链接"};
-            boolean flag = ExcelTools.exportExcelForNewsV2(resultList, titles, fos);
-            if(flag){
-                log.info("导出报表成功! "+excelFile.getAbsolutePath());
-            }else {
-                log.info("导出报表失败! "+excelFile.getAbsolutePath());
-            }
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            if(fos!=null){
-                try {
-                    fos.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            driver.quit();
-        }
-    }
-
-    @Test
-    void testGetDouyinDanmaku(){
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
-        arguments.add("--headless");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        FileOutputStream fos=null;
-        //最后结果集
-        List<Comment>resultList=new ArrayList<>();
-        try {
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            driver.get("https://live.douyin.com/361120838352");
-            long startTimeMillis = System.currentTimeMillis();
-            //十分钟
-            long minutes=5;
-            long endTimeMillis=startTimeMillis+(minutes*60*1000);
-            String startTime = format.format(startTimeMillis);
-            String endTime=format.format(endTimeMillis);
-            log.info("开始时间:"+startTime+"--结束时间:"+endTime);
-            long currentTimeMillis=new Date().getTime();
-            //记录重复发言
-            List<Comment>repeatList=new ArrayList<>();
-            while(currentTimeMillis<endTimeMillis){
-                currentTimeMillis=new Date().getTime();
-                Document document = DriverTools.parseCurrentWebPage(15, driver);
-                Elements danmakuList = document.getElementsByClass("webcast-chatroom___item");
-                for(int i=0;i<danmakuList.size();i++){
-                    if(i==0){
-                        continue;
-                    }
-                    try {
-                        Element element = danmakuList.get(i);
-                        Element commentContent = element.getElementsByTag("div").first();
-                        String userName = commentContent.getElementsByClass("_205YX559")
-                                .first().text().replaceAll("：","");
-                        String userComment = commentContent.getElementsByClass("_2Fj-jpg0")
-                                .first().text();
-                        if(userComment.equals("来了")){
-                            continue;
-                        }
-                        Comment comment=new Comment();
-                        comment.setCommentTime(format.format(currentTimeMillis));
-                        comment.setUserName(userName);
-                        comment.setUserComment(userComment);
-                        boolean isRepeat=false;
-                        //判断是不是重复评论
-                        for (Comment tmp : repeatList) {
-                            if(tmp.getUserName().equals(userName)&&tmp.getUserComment().equals(userComment)){
-                                isRepeat=true;
-                                break;
-                            }
-                        }
-                        if(isRepeat==false){
-                            log.info(format.format(currentTimeMillis)+"--"+userName+"--"+userComment);
-                            repeatList.add(comment);
-                            resultList.add(comment);
-                        }
-                    }catch (Exception e){
-                        continue;
-                    }
-                }
-            }
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            long currentTimeStamp = System.currentTimeMillis();
-            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\抖音评论_"+format.format(currentTimeStamp)+".xlsx");
-            try {
-                fos=new FileOutputStream(excelFile);
-                String titles[]=new String[]{"评论时间","用户","评论内容"};
-                boolean flag=false;
-                if(resultList.size()>0){
-                    flag = ExcelTools.exportExcelForDouyinV3(resultList, titles, fos);
-                }
-                if(flag){
-                    log.info("导出报表成功! "+excelFile.getAbsolutePath());
-                }else {
-                    log.info("导出报表失败! "+excelFile.getAbsolutePath());
-                }
-            } catch (FileNotFoundException e) {
-                log.error(e.getMessage());
-                e.printStackTrace();
-            }finally {
-                if(fos!=null){
-                    try {
-                        fos.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                driver.quit();
-            }
-        }
-    }
-
-    @Test
-    void testGetHuyaDanmaku(){
+//    @Test
+//    void testRunChromeDriver() {
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        options.addArguments("--proxy-server=http://"+proxyString);
+//        WebDriver driver=new ChromeDriver(options);
+//        try {
+//            driver.get("https://author.baidu.com/home?from=bjh_article&app_id=1683791004794452");
+//            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+//            WebElement articlePage = driver.findElement(By.xpath("/html/body/div[2]/div/div[4]/div[1]/div[1]/div/div[1]/div[1]/div/div[4]"));
+//            articlePage.click();
+//            WebElement webElement_1 = driver.findElement(By.xpath("/html"));
+//            String content = webElement_1.getAttribute("outerHTML");
+//            Document document_1 = Jsoup.parse(content);
+//            Element contentNum = document_1.getElementsByClass("info-num").first();
+//            int num = Integer.parseInt(contentNum.text());
+//            System.out.println("共有"+num+"篇内容");
+//            int sign=1;
+//            JavascriptExecutor jse = (JavascriptExecutor) driver;
+//            //翻页
+//            while(true){
+//                System.out.println("第"+sign+"次翻页");
+//                WebElement webElement_2 = driver.findElement(By.xpath("/html"));
+//                content = webElement_2.getAttribute("outerHTML");
+//                Document document_2 = Jsoup.parse(content);
+//                Elements elements = document_2.getElementsByClass("text-title line-clamp-2");
+//                System.out.println("目前已收录文章的总量:"+elements.size());
+//                for (Element element : elements) {
+//                    System.out.println(element.text());
+//                }
+//                //到底了
+//                if(document_2.getElementsByClass("s-loader-container state-2").first()!=null){
+//                    break;
+//                }
+//                jse.executeScript("window.scrollTo(0, document.body.scrollHeight)");
+//                sign++;
+//                Thread.sleep(2000);
+//            }
+//            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+//            WebElement webElement_2 = driver.findElement(By.xpath("/html"));
+//            content = webElement_2.getAttribute("outerHTML");
+//            Document document = Jsoup.parse(content);
+//            Elements elements = document.getElementsByClass("text-title line-clamp-2");
+//            for (Element element : elements) {
+//                System.out.println(element.text());
+//            }
+//        }catch (Exception e){
+//            System.out.println("异常:"+e.getMessage());
+//        }finally {
+//            //关闭全部驱动
+//            driver.quit();
+//        }
+//    }
+//
+//    @Test
+//    void testGetNewsFromBaidu(){
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        List<String>arguments=new ArrayList<>();
+//        arguments.add("--proxy-server=http://"+proxyString);
+////        arguments.add("--headless");
+////        arguments.add("--start-maximized");
+////        arguments.add("--user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1");
+//        options.addArguments(arguments);
+//        WebDriver driver=new ChromeDriver(options);
+//        try {
+//            //拿这个新闻10页数据
+//            int flag=0;
+//            while(true){
+//                String url="https://www.google.co.jp/search?q=github&start="+(flag*10);
+//                log.info("url:"+url);
+//                driver.get(url);
+//                flag++;
+//                Document document = DriverTools.parseCurrentWebPage(5,driver);
+//                Elements newsItem = document.getElementsByClass("g");
+//                if(newsItem==null||newsItem.size()==0){
+//                    log.info("=====================全部相关新闻已抓取完毕=====================");
+//                    break;
+//                }
+//                for (Element element : newsItem) {
+//                    log.info("");
+//                    Element h3 = element.getElementsByTag("h3").first();
+//                    if(h3!=null){
+//                        log.info(h3.text());
+//                    }
+//                    Element a = element.getElementsByTag("a").first();
+//                    log.info(a.attr("href"));
+//                }
+//                log.info("=====================第"+flag+"页已抓取完毕=====================");
+//            }
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//            //关闭全部驱动
+//            driver.quit();
+//        }
+//    }
+//
+//    @Test
+//    void testGetNewsFromNetease() {
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        List<String>arguments=new ArrayList<>();
+//        arguments.add("--proxy-server=http://"+proxyString);
+////        arguments.add("--headless");
+//        options.addArguments(arguments);
+//        WebDriver driver=new ChromeDriver(options);
+//        Map<String,String>resultMap=new HashMap<>();
+//        FileOutputStream fos=null;
+//        try {
+//            Map<String,String>newsMap=new HashMap<>();
+//            newsMap.put("国际","https://news.163.com/world/");
+//            newsMap.put("航空","https://news.163.com/air/");
+//            newsMap.put("军事","https://war.163.com/");
+//            newsMap.put("国内","https://news.163.com/domestic/");
+//            for (Map.Entry<String,String>tmp:newsMap.entrySet()){
+//                String tagName=tmp.getKey();
+//                String url=tmp.getValue();
+//                log.info("========================================专栏 "+tagName+"========================================");
+//                driver.get(url);
+//                log.info("url:"+url);
+//                Document document = DriverTools.parseCurrentWebPage(5, driver);
+//                Elements newsList = document.getElementsByClass("data_row news_article clearfix ");
+//                for (Element newsItem : newsList) {
+//                    Element h3 = newsItem.getElementsByTag("h3").first();
+//                    if(h3!=null){
+//                        String link = h3.getElementsByTag("a").attr("href");
+//                        resultMap.put(h3.text(),link);
+//                        log.info(h3.text()+" "+link);
+//                    }
+//                }
+//                log.info("");
+//            }
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+//            long currentTimeStamp = System.currentTimeMillis();
+//            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\网易新闻_"+format.format(currentTimeStamp)+".xlsx");
+//            fos=new FileOutputStream(excelFile);
+//            String titles[]=new String[]{"标题","链接"};
+//            boolean flag = ExcelTools.exportExcelForNews(resultMap, titles, fos);
+//            if(flag){
+//                log.info("导出报表成功! "+excelFile.getAbsolutePath());
+//            }else {
+//                log.info("导出报表失败! "+excelFile.getAbsolutePath());
+//            }
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//            if(fos!=null){
+//                try {
+//                    fos.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            driver.quit();
+//        }
+//    }
+//
+//    @Test
+//    void testGetNewsFromNeteaseV2(){
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        List<String>arguments=new ArrayList<>();
+//        arguments.add("--proxy-server=http://"+proxyString);
+////        arguments.add("--headless");
+//        options.addArguments(arguments);
+//        WebDriver driver=new ChromeDriver(options);
+//        List<News>resultList=new ArrayList<>();
+//        FileOutputStream fos=null;
+//        try {
+//            Map<String,String>newsMap=new HashMap<>();
+//            newsMap.put("国际","https://news.163.com/world/");
+//            newsMap.put("航空","https://news.163.com/air/");
+//            newsMap.put("军事","https://war.163.com/");
+//            newsMap.put("国内","https://news.163.com/domestic/");
+//            for (Map.Entry<String,String>tmp:newsMap.entrySet()){
+//                String tagName=tmp.getKey();
+//                String url=tmp.getValue();
+//                log.info("========================================专栏 "+tagName+"========================================");
+//                driver.get(url);
+//                log.info("url:"+url);
+//                Document document = DriverTools.parseCurrentWebPage(5, driver);
+//                Elements newsList = document.getElementsByClass("data_row news_article clearfix ");
+//                for (Element newsItem : newsList) {
+//                    Element h3 = newsItem.getElementsByTag("h3").first();
+//                    if(h3!=null){
+//                        String publishTime="";
+//                        String title=h3.text();
+//                        String link = h3.getElementsByTag("a").attr("href");
+//                        try {
+//                            publishTime=newsItem.getElementsByClass("time").first().text();
+//                        }catch (NullPointerException e){
+//                            log.info("新闻标题:"+title+" 没有发布时间");
+//                        }
+//                        News news=new News();
+//                        news.setNewsTitle(title);
+//                        news.setPublishDate(publishTime);
+//                        news.setNewsLink(link);
+//                        resultList.add(news);
+//                        if(publishTime.equals("")){
+//                            log.info(h3.text()+" "+link);
+//                        }else {
+//                            log.info(publishTime+" "+h3.text()+" "+link);
+//                        }
+//
+//                    }
+//                }
+//                log.info("");
+//            }
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+//            long currentTimeStamp = System.currentTimeMillis();
+//            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\网易新闻_"+format.format(currentTimeStamp)+".xlsx");
+//            fos=new FileOutputStream(excelFile);
+//            String titles[]=new String[]{"日期","标题","链接"};
+//            boolean flag = ExcelTools.exportExcelForNewsV2(resultList, titles, fos);
+//            if(flag){
+//                log.info("导出报表成功! "+excelFile.getAbsolutePath());
+//            }else {
+//                log.info("导出报表失败! "+excelFile.getAbsolutePath());
+//            }
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//            if(fos!=null){
+//                try {
+//                    fos.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            driver.quit();
+//        }
+//    }
+//
+//    @Test
+//    void testGetNewsFromTencentNews(){
 //        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 //        String proxyString=localProxyHost+":"+localProxyPort;
 //        ChromeOptions options=new ChromeOptions();
@@ -479,263 +308,441 @@ class DanmakuCrawlerApplicationTests {
 //        arguments.add("--headless");
 //        options.addArguments(arguments);
 //        WebDriver driver=new ChromeDriver(options);
-        FileOutputStream fos=null;
-        //最后结果集
-        List<Comment>resultList=new ArrayList<>();
-        try {
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            driver.get("https://www.huya.com/257085");
-            long startTimeMillis = System.currentTimeMillis();
-            //十分钟
-            long minutes=2;
-            long endTimeMillis=startTimeMillis+(minutes*60*1000);
-            String startTime = format.format(startTimeMillis);
-            String endTime=format.format(endTimeMillis);
-            log.info("开始时间:"+startTime+"--结束时间:"+endTime);
-            long currentTimeMillis=new Date().getTime();
-            //记录重复发言
-            List<Comment>repeatList=new ArrayList<>();
-            while(currentTimeMillis<endTimeMillis){
-                currentTimeMillis=new Date().getTime();
-                Document document = DriverTools.parseCurrentWebPage(15, driver);
-                Elements danmakuList = document.getElementsByClass("J_msg");
-                for(int i=0;i<danmakuList.size();i++){
-                    if(i==0){
-                        continue;
-                    }
-                    try {
-                        Element element = danmakuList.get(i);
-                        Element commentContent = element.getElementsByTag("div").first();
-                        String userName = commentContent.getElementsByClass("name J_userMenu")
-                                .first().text();
-                        String userComment = commentContent.getElementsByClass("msg")
-                                .first().text();
-                        if(userComment.equals("驾临直播间")){
-                            continue;
-                        }
-                        Comment comment=new Comment();
-                        comment.setCommentTime(format.format(currentTimeMillis));
-                        comment.setUserName(userName);
-                        comment.setUserComment(userComment);
-                        boolean isRepeat=false;
-                        //判断是不是重复评论
-                        for (Comment tmp : repeatList) {
-                            if(tmp.getUserName().equals(userName)&&tmp.getUserComment().equals(userComment)){
-                                isRepeat=true;
-                                break;
-                            }
-                        }
-                        if(isRepeat==false){
-                            log.info(format.format(currentTimeMillis)+"--"+userName+"--"+userComment);
-                            repeatList.add(comment);
-                            resultList.add(comment);
-                        }
-                    }catch (Exception e){
-                        continue;
-                    }
-                }
-            }
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            long currentTimeStamp = System.currentTimeMillis();
-            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\虎牙弹幕_"+format.format(currentTimeStamp)+".xlsx");
-            try {
-                fos=new FileOutputStream(excelFile);
-                String titles[]=new String[]{"评论时间","用户","评论内容"};
-                boolean flag=false;
-                if(resultList.size()>0){
-                    flag = ExcelTools.exportExcelForDouyinV3(resultList, titles, fos);
-                }
-                if(flag){
-                    log.info("导出报表成功! "+excelFile.getAbsolutePath());
-                }else {
-                    log.info("导出报表失败! "+excelFile.getAbsolutePath());
-                }
-            } catch (FileNotFoundException e) {
-                log.error(e.getMessage());
-                e.printStackTrace();
-            }finally {
-                if(fos!=null){
-                    try {
-                        fos.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                driver.quit();
-            }
-        }
-    }
-
-    @Test
-    void testGetBilibiliDanmaku(){
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
-        arguments.add("--headless");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        FileOutputStream fos=null;
-        //最后结果集
-        List<Comment>resultList=new ArrayList<>();
-        try {
-
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            driver.get("https://live.bilibili.com/22333522");
-            long startTimeMillis = System.currentTimeMillis();
-            //十分钟
-            long minutes=30;
-            long endTimeMillis=startTimeMillis+(minutes*60*1000);
-            String startTime = format.format(startTimeMillis);
-            String endTime=format.format(endTimeMillis);
-            log.info("开始时间:"+startTime+"--结束时间:"+endTime);
-            long currentTimeMillis=new Date().getTime();
-            //记录重复发言
-            List<Comment>repeatList=new ArrayList<>();
-            while(currentTimeMillis<endTimeMillis){
-                currentTimeMillis=new Date().getTime();
-                Document document = DriverTools.parseCurrentWebPage(15, driver);
-                Elements danmakuList = document.getElementsByClass("chat-item danmaku-item ");
-                Elements tmpDanmakuList = document.getElementsByClass("chat-item danmaku-item chat-colorful-bubble");
-                danmakuList.addAll(tmpDanmakuList);
-                for(int i=0;i<danmakuList.size();i++){
-                    try {
-                        Element element = danmakuList.get(i);
-                        String userName = element.getElementsByClass("user-name v-middle pointer open-menu")
-                                .first().text().replaceAll(":","").trim();
-                        String userComment = element.getElementsByClass("danmaku-content v-middle pointer ts-dot-2 open-menu")
-                                .first().text();
-                        Comment comment=new Comment();
-                        comment.setCommentTime(format.format(currentTimeMillis));
-                        comment.setUserName(userName);
-                        comment.setUserComment(userComment);
-                        boolean isRepeat=false;
-                        //判断是不是重复评论
-                        for (Comment tmp : repeatList) {
-                            if(tmp.getUserName().equals(userName)&&tmp.getUserComment().equals(userComment)){
-                                isRepeat=true;
-                                break;
-                            }
-                        }
-                        if(isRepeat==false){
-                            log.info(format.format(currentTimeMillis)+"--"+userName+"--"+userComment);
-                            repeatList.add(comment);
-                            resultList.add(comment);
-                        }
-                    }catch (Exception e){
-                        continue;
-                    }
-                }
-            }
-
-        }catch (Exception e){
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-
-            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-            long currentTimeStamp = System.currentTimeMillis();
-            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\B站弹幕_"+format.format(currentTimeStamp)+".xlsx");
-            try {
-                fos=new FileOutputStream(excelFile);
-                String titles[]=new String[]{"评论时间","用户","评论内容"};
-                boolean flag=false;
-                if(resultList.size()>0){
-                    flag = ExcelTools.exportExcelForDouyinV3(resultList, titles, fos);
-                }
-                if(flag){
-                    log.info("导出报表成功! "+excelFile.getAbsolutePath());
-                }else {
-                    log.info("导出报表失败! "+excelFile.getAbsolutePath());
-                }
-            } catch (FileNotFoundException e) {
-                log.error(e.getMessage());
-                e.printStackTrace();
-            }finally {
-                if(fos!=null){
-                    try {
-                        fos.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                driver.quit();
-            }
-        }
-    }
-
-    @Test
-    void testIoPrintFile() throws IOException {
-        List<String>list=new ArrayList<>();
-        list.add("第一行");
-        list.add("第二行");
-        list.add("第三行");
-        File file=new File("C:\\Users\\Lenovo\\Desktop\\export\\test.txt");
-        FileOutputStream fos=new FileOutputStream(file);
-        PrintWriter pr=new PrintWriter(fos);
-        BufferedWriter br=new BufferedWriter(pr);
-        for (String s : list) {
-            br.write(s);
-            br.newLine();
-            br.flush();
-        }
-        br.close();
-        pr.close();
-        fos.close();
-    }
-
-    @Test
-    void testGetDouyinDanmakuV2(){
-        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        String proxyString=localProxyHost+":"+localProxyPort;
-        ChromeOptions options=new ChromeOptions();
-        List<String>arguments=new ArrayList<>();
-        arguments.add("--proxy-server=http://"+proxyString);
+//        List<News>resultList=new ArrayList<>();
+//        FileOutputStream fos=null;
+//        try {
+//            Map<String,String>newsMap=new HashMap<>();
+//            newsMap.put("军事","https://new.qq.com/ch/milite/");
+//            newsMap.put("国际","https://new.qq.com/ch/world/");
+//            for (Map.Entry<String,String>tmp:newsMap.entrySet()){
+//                String tagName=tmp.getKey();
+//                String url=tmp.getValue();
+//                log.info("========================================专栏 "+tagName+"========================================");
+//                driver.get(url);
+//                log.info("url:"+url);
+//                Document document = DriverTools.parseCurrentWebPage(5, driver);
+//                Elements newsList = document.getElementsByClass("item cf itme-ls");
+//                for (Element newsItem : newsList) {
+//                    Element h3 = newsItem.getElementsByTag("h3").first();
+//                    if(h3!=null){
+//                        String publishTime="";
+//                        String title=h3.text();
+//                        String link = h3.getElementsByTag("a").attr("href");
+//                        try {
+//                            publishTime=newsItem.getElementsByClass("time").first().text();
+//                        }catch (NullPointerException e){
+//                            log.info("新闻标题:"+title+" 没有发布时间");
+//                        }
+//                        News news=new News();
+//                        news.setNewsTitle(title);
+//                        news.setPublishDate(publishTime);
+//                        news.setNewsLink(link);
+//                        resultList.add(news);
+//                        if(publishTime.equals("")){
+//                            log.info(h3.text()+" "+link);
+//                        }else {
+//                            log.info(publishTime+" "+h3.text()+" "+link);
+//                        }
+//
+//                    }
+//                }
+//                log.info("");
+//            }
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+//            long currentTimeStamp = System.currentTimeMillis();
+//            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\腾讯新闻_"+format.format(currentTimeStamp)+".xlsx");
+//            fos=new FileOutputStream(excelFile);
+//            String titles[]=new String[]{"日期","标题","链接"};
+//            boolean flag = ExcelTools.exportExcelForNewsV2(resultList, titles, fos);
+//            if(flag){
+//                log.info("导出报表成功! "+excelFile.getAbsolutePath());
+//            }else {
+//                log.info("导出报表失败! "+excelFile.getAbsolutePath());
+//            }
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//            if(fos!=null){
+//                try {
+//                    fos.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            driver.quit();
+//        }
+//    }
+//
+//    @Test
+//    void testGetDouyinDanmaku(){
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        List<String>arguments=new ArrayList<>();
+//        arguments.add("--proxy-server=http://"+proxyString);
 //        arguments.add("--headless");
-        arguments.add("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36");
-        arguments.add("--disable-blink-features=AutomationControlled");
-        options.addArguments(arguments);
-        WebDriver driver=new ChromeDriver(options);
-        SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        try {
-            driver.get("https://www.douyin.com/video/6964295044824157454?previous_page=app_code_link");
-            Document document=null;
-            Element video =null;
-            //开始时间
-            long startTimeMillis = System.currentTimeMillis();
-            log.info("==================开始时间 "+format.format(startTimeMillis)+"==================");
-            //十分钟内都可以监控获取video标签
-            long minutes=10;
-            long endTimeMillis=startTimeMillis+(minutes*60*1000);
-            long currentTimeMillis=new Date().getTime();
-            while(currentTimeMillis<endTimeMillis) {
-                currentTimeMillis = new Date().getTime();
-                document = DriverTools.parseCurrentWebPage(30, driver);
-                video = document.getElementsByTag("video").first();
-                if(video!=null){
-                    break;
-                }
-            }
-            Elements source = video.getElementsByTag("source");
-            for (Element element : source) {
-                String url="https:"+element.attr("src");
-                log.info(url);
-                System.out.println(url);
-            }
-            log.info("==================结束时间 "+format.format(endTimeMillis)+"==================");
-        }catch (Exception e) {
-            log.error(e.getMessage());
-            e.printStackTrace();
-        }finally {
-            driver.quit();
-        }
-    }
+//        options.addArguments(arguments);
+//        WebDriver driver=new ChromeDriver(options);
+//        FileOutputStream fos=null;
+//        //最后结果集
+//        List<Comment>resultList=new ArrayList<>();
+//        try {
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//            driver.get("https://live.douyin.com/361120838352");
+//            long startTimeMillis = System.currentTimeMillis();
+//            //十分钟
+//            long minutes=5;
+//            long endTimeMillis=startTimeMillis+(minutes*60*1000);
+//            String startTime = format.format(startTimeMillis);
+//            String endTime=format.format(endTimeMillis);
+//            log.info("开始时间:"+startTime+"--结束时间:"+endTime);
+//            long currentTimeMillis=new Date().getTime();
+//            //记录重复发言
+//            List<Comment>repeatList=new ArrayList<>();
+//            while(currentTimeMillis<endTimeMillis){
+//                currentTimeMillis=new Date().getTime();
+//                Document document = DriverTools.parseCurrentWebPage(15, driver);
+//                Elements danmakuList = document.getElementsByClass("webcast-chatroom___item");
+//                for(int i=0;i<danmakuList.size();i++){
+//                    if(i==0){
+//                        continue;
+//                    }
+//                    try {
+//                        Element element = danmakuList.get(i);
+//                        Element commentContent = element.getElementsByTag("div").first();
+//                        String userName = commentContent.getElementsByClass("_205YX559")
+//                                .first().text().replaceAll("：","");
+//                        String userComment = commentContent.getElementsByClass("_2Fj-jpg0")
+//                                .first().text();
+//                        if(userComment.equals("来了")){
+//                            continue;
+//                        }
+//                        Comment comment=new Comment();
+//                        comment.setCommentTime(format.format(currentTimeMillis));
+//                        comment.setUserName(userName);
+//                        comment.setUserComment(userComment);
+//                        boolean isRepeat=false;
+//                        //判断是不是重复评论
+//                        for (Comment tmp : repeatList) {
+//                            if(tmp.getUserName().equals(userName)&&tmp.getUserComment().equals(userComment)){
+//                                isRepeat=true;
+//                                break;
+//                            }
+//                        }
+//                        if(isRepeat==false){
+//                            log.info(format.format(currentTimeMillis)+"--"+userName+"--"+userComment);
+//                            repeatList.add(comment);
+//                            resultList.add(comment);
+//                        }
+//                    }catch (Exception e){
+//                        continue;
+//                    }
+//                }
+//            }
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+//            long currentTimeStamp = System.currentTimeMillis();
+//            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\抖音评论_"+format.format(currentTimeStamp)+".xlsx");
+//            try {
+//                fos=new FileOutputStream(excelFile);
+//                String titles[]=new String[]{"评论时间","用户","评论内容"};
+//                boolean flag=false;
+//                if(resultList.size()>0){
+//                    flag = ExcelTools.exportExcelForDouyinV3(resultList, titles, fos);
+//                }
+//                if(flag){
+//                    log.info("导出报表成功! "+excelFile.getAbsolutePath());
+//                }else {
+//                    log.info("导出报表失败! "+excelFile.getAbsolutePath());
+//                }
+//            } catch (FileNotFoundException e) {
+//                log.error(e.getMessage());
+//                e.printStackTrace();
+//            }finally {
+//                if(fos!=null){
+//                    try {
+//                        fos.close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//                driver.quit();
+//            }
+//        }
+//    }
+//
+//    @Test
+//    void testGetHuyaDanmaku(){
+////        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+////        String proxyString=localProxyHost+":"+localProxyPort;
+////        ChromeOptions options=new ChromeOptions();
+////        List<String>arguments=new ArrayList<>();
+////        arguments.add("--proxy-server=http://"+proxyString);
+////        arguments.add("--headless");
+////        options.addArguments(arguments);
+////        WebDriver driver=new ChromeDriver(options);
+//        FileOutputStream fos=null;
+//        //最后结果集
+//        List<Comment>resultList=new ArrayList<>();
+//        try {
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//            driver.get("https://www.huya.com/257085");
+//            long startTimeMillis = System.currentTimeMillis();
+//            //十分钟
+//            long minutes=2;
+//            long endTimeMillis=startTimeMillis+(minutes*60*1000);
+//            String startTime = format.format(startTimeMillis);
+//            String endTime=format.format(endTimeMillis);
+//            log.info("开始时间:"+startTime+"--结束时间:"+endTime);
+//            long currentTimeMillis=new Date().getTime();
+//            //记录重复发言
+//            List<Comment>repeatList=new ArrayList<>();
+//            while(currentTimeMillis<endTimeMillis){
+//                currentTimeMillis=new Date().getTime();
+//                Document document = DriverTools.parseCurrentWebPage(15, driver);
+//                Elements danmakuList = document.getElementsByClass("J_msg");
+//                for(int i=0;i<danmakuList.size();i++){
+//                    if(i==0){
+//                        continue;
+//                    }
+//                    try {
+//                        Element element = danmakuList.get(i);
+//                        Element commentContent = element.getElementsByTag("div").first();
+//                        String userName = commentContent.getElementsByClass("name J_userMenu")
+//                                .first().text();
+//                        String userComment = commentContent.getElementsByClass("msg")
+//                                .first().text();
+//                        if(userComment.equals("驾临直播间")){
+//                            continue;
+//                        }
+//                        Comment comment=new Comment();
+//                        comment.setCommentTime(format.format(currentTimeMillis));
+//                        comment.setUserName(userName);
+//                        comment.setUserComment(userComment);
+//                        boolean isRepeat=false;
+//                        //判断是不是重复评论
+//                        for (Comment tmp : repeatList) {
+//                            if(tmp.getUserName().equals(userName)&&tmp.getUserComment().equals(userComment)){
+//                                isRepeat=true;
+//                                break;
+//                            }
+//                        }
+//                        if(isRepeat==false){
+//                            log.info(format.format(currentTimeMillis)+"--"+userName+"--"+userComment);
+//                            repeatList.add(comment);
+//                            resultList.add(comment);
+//                        }
+//                    }catch (Exception e){
+//                        continue;
+//                    }
+//                }
+//            }
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+//            long currentTimeStamp = System.currentTimeMillis();
+//            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\虎牙弹幕_"+format.format(currentTimeStamp)+".xlsx");
+//            try {
+//                fos=new FileOutputStream(excelFile);
+//                String titles[]=new String[]{"评论时间","用户","评论内容"};
+//                boolean flag=false;
+//                if(resultList.size()>0){
+//                    flag = ExcelTools.exportExcelForDouyinV3(resultList, titles, fos);
+//                }
+//                if(flag){
+//                    log.info("导出报表成功! "+excelFile.getAbsolutePath());
+//                }else {
+//                    log.info("导出报表失败! "+excelFile.getAbsolutePath());
+//                }
+//            } catch (FileNotFoundException e) {
+//                log.error(e.getMessage());
+//                e.printStackTrace();
+//            }finally {
+//                if(fos!=null){
+//                    try {
+//                        fos.close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//                driver.quit();
+//            }
+//        }
+//    }
+//
+//    @Test
+//    void testGetBilibiliDanmaku(){
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        List<String>arguments=new ArrayList<>();
+//        arguments.add("--proxy-server=http://"+proxyString);
+//        arguments.add("--headless");
+//        options.addArguments(arguments);
+//        WebDriver driver=new ChromeDriver(options);
+//        FileOutputStream fos=null;
+//        //最后结果集
+//        List<Comment>resultList=new ArrayList<>();
+//        try {
+//
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//            driver.get("https://live.bilibili.com/22333522");
+//            long startTimeMillis = System.currentTimeMillis();
+//            //十分钟
+//            long minutes=30;
+//            long endTimeMillis=startTimeMillis+(minutes*60*1000);
+//            String startTime = format.format(startTimeMillis);
+//            String endTime=format.format(endTimeMillis);
+//            log.info("开始时间:"+startTime+"--结束时间:"+endTime);
+//            long currentTimeMillis=new Date().getTime();
+//            //记录重复发言
+//            List<Comment>repeatList=new ArrayList<>();
+//            while(currentTimeMillis<endTimeMillis){
+//                currentTimeMillis=new Date().getTime();
+//                Document document = DriverTools.parseCurrentWebPage(15, driver);
+//                Elements danmakuList = document.getElementsByClass("chat-item danmaku-item ");
+//                Elements tmpDanmakuList = document.getElementsByClass("chat-item danmaku-item chat-colorful-bubble");
+//                danmakuList.addAll(tmpDanmakuList);
+//                for(int i=0;i<danmakuList.size();i++){
+//                    try {
+//                        Element element = danmakuList.get(i);
+//                        String userName = element.getElementsByClass("user-name v-middle pointer open-menu")
+//                                .first().text().replaceAll(":","").trim();
+//                        String userComment = element.getElementsByClass("danmaku-content v-middle pointer ts-dot-2 open-menu")
+//                                .first().text();
+//                        Comment comment=new Comment();
+//                        comment.setCommentTime(format.format(currentTimeMillis));
+//                        comment.setUserName(userName);
+//                        comment.setUserComment(userComment);
+//                        boolean isRepeat=false;
+//                        //判断是不是重复评论
+//                        for (Comment tmp : repeatList) {
+//                            if(tmp.getUserName().equals(userName)&&tmp.getUserComment().equals(userComment)){
+//                                isRepeat=true;
+//                                break;
+//                            }
+//                        }
+//                        if(isRepeat==false){
+//                            log.info(format.format(currentTimeMillis)+"--"+userName+"--"+userComment);
+//                            repeatList.add(comment);
+//                            resultList.add(comment);
+//                        }
+//                    }catch (Exception e){
+//                        continue;
+//                    }
+//                }
+//            }
+//
+//        }catch (Exception e){
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//
+//            SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+//            long currentTimeStamp = System.currentTimeMillis();
+//            File excelFile=new File("C:\\Users\\Lenovo\\Desktop\\export\\B站弹幕_"+format.format(currentTimeStamp)+".xlsx");
+//            try {
+//                fos=new FileOutputStream(excelFile);
+//                String titles[]=new String[]{"评论时间","用户","评论内容"};
+//                boolean flag=false;
+//                if(resultList.size()>0){
+//                    flag = ExcelTools.exportExcelForDouyinV3(resultList, titles, fos);
+//                }
+//                if(flag){
+//                    log.info("导出报表成功! "+excelFile.getAbsolutePath());
+//                }else {
+//                    log.info("导出报表失败! "+excelFile.getAbsolutePath());
+//                }
+//            } catch (FileNotFoundException e) {
+//                log.error(e.getMessage());
+//                e.printStackTrace();
+//            }finally {
+//                if(fos!=null){
+//                    try {
+//                        fos.close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//                driver.quit();
+//            }
+//        }
+//    }
+//
+//    @Test
+//    void testIoPrintFile() throws IOException {
+//        List<String>list=new ArrayList<>();
+//        list.add("第一行");
+//        list.add("第二行");
+//        list.add("第三行");
+//        File file=new File("C:\\Users\\Lenovo\\Desktop\\export\\test.txt");
+//        FileOutputStream fos=new FileOutputStream(file);
+//        PrintWriter pr=new PrintWriter(fos);
+//        BufferedWriter br=new BufferedWriter(pr);
+//        for (String s : list) {
+//            br.write(s);
+//            br.newLine();
+//            br.flush();
+//        }
+//        br.close();
+//        pr.close();
+//        fos.close();
+//    }
+//
+//    @Test
+//    void testGetDouyinDanmakuV2(){
+//        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+//        String proxyString=localProxyHost+":"+localProxyPort;
+//        ChromeOptions options=new ChromeOptions();
+//        List<String>arguments=new ArrayList<>();
+//        arguments.add("--proxy-server=http://"+proxyString);
+////        arguments.add("--headless");
+//        arguments.add("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36");
+//        arguments.add("--disable-blink-features=AutomationControlled");
+//        options.addArguments(arguments);
+//        WebDriver driver=new ChromeDriver(options);
+//        SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//        try {
+//            driver.get("https://www.douyin.com/video/6964295044824157454?previous_page=app_code_link");
+//            Document document=null;
+//            Element video =null;
+//            //开始时间
+//            long startTimeMillis = System.currentTimeMillis();
+//            log.info("==================开始时间 "+format.format(startTimeMillis)+"==================");
+//            //十分钟内都可以监控获取video标签
+//            long minutes=10;
+//            long endTimeMillis=startTimeMillis+(minutes*60*1000);
+//            long currentTimeMillis=new Date().getTime();
+//            while(currentTimeMillis<endTimeMillis) {
+//                currentTimeMillis = new Date().getTime();
+//                document = DriverTools.parseCurrentWebPage(30, driver);
+//                video = document.getElementsByTag("video").first();
+//                if(video!=null){
+//                    break;
+//                }
+//            }
+//            Elements source = video.getElementsByTag("source");
+//            for (Element element : source) {
+//                String url="https:"+element.attr("src");
+//                log.info(url);
+//                System.out.println(url);
+//            }
+//            log.info("==================结束时间 "+format.format(endTimeMillis)+"==================");
+//        }catch (Exception e) {
+//            log.error(e.getMessage());
+//            e.printStackTrace();
+//        }finally {
+//            driver.quit();
+//        }
+//    }
 
     //广汇汽车服务
     @Test
@@ -1174,5 +1181,413 @@ class DanmakuCrawlerApplicationTests {
             fos.close();
             log.info("流关闭完成!");
         }
+    }
+
+
+    /**
+     * 2021年12月23日09:21:31 新需求
+     */
+
+    public static void  exportExcel(String excelOutPutDir,String companyName,List<CarDealer>resultList) throws IOException {
+        String[]titles=new String[]{"城市","品牌","经销商","地址","电话"};
+        File file=new File(excelOutPutDir+companyName);
+        FileOutputStream fos=new FileOutputStream(file);
+        try {
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
+            log.info("报表已打印完成!");
+        }catch (Exception e){
+            log.error(e.getMessage());
+        }finally {
+            fos.close();
+            log.info("流关闭完成!");
+        }
+    }
+
+    //北汽鹏龙
+    @Test
+    void testGetBeiqipenglong() throws IOException {
+        //结果集
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="北汽鹏龙经销商数据.xlsx";
+        String url="https://www.rocar.net/productList/brand?brand=bz&menu_id=12";
+        Response response = OkHttpTools.getResponse(url, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String jsonString = response.body().string();
+        JSONObject jsonObject = JSONObject.parseObject(jsonString);
+        JSONArray productList = jsonObject.getJSONArray("productList");
+        for(int i=0;i<productList.size();i++){
+            JSONObject product = productList.getJSONObject(i);
+            CarDealer carDealer=new CarDealer();
+            String cityName = product.getString("recommend_location");
+            String brandName = product.getString("keywords");
+            String dealerName = product.getString("name");
+            String dealerAddress = product.getString("enname");
+            String dealerPhone = product.getString("subname");
+            carDealer.setCityName(cityName);
+            carDealer.setBrandName(brandName);
+            carDealer.setDealerName(dealerName);
+            carDealer.setDealerAddress(dealerAddress);
+            carDealer.setDealerPhone(dealerPhone);
+            resultList.add(carDealer);
+        }
+        String[]titles=new String[]{"城市","品牌","经销商","地址","电话"};
+        File file=new File(excelOutPutDir+companyName);
+        FileOutputStream fos=new FileOutputStream(file);
+        try {
+            ExcelTools.exportExcelForCarDealerV4(resultList,titles,fos);
+            log.info("报表已打印完成!");
+        }catch (Exception e){
+            log.error(e.getMessage());
+        }finally {
+            fos.close();
+            log.info("流关闭完成!");
+        }
+    }
+
+    //吉林长久实业
+    @Test
+    void testGetJilinchangjiushiye() throws IOException {
+        //结果集
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="吉林长久实业经销商数据.xlsx";
+        String indexUrl="http://www.changjiuqiche.com/index.php?m=default.brand&catid=4&cCatid=16&tCatid=32";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Elements liList = document.getElementsByClass("ombrCon").first().getElementsByTag("li");
+        for (Element li : liList) {
+            String brandName=li.text();
+            String dealerUrl = "http://www.changjiuqiche.com"+li.getElementsByTag("a").first().attr("href");
+            int flag=0;
+            while(flag<3){
+                try {
+                    log.info(dealerUrl);
+                    Response rsp = OkHttpTools.getResponse(dealerUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                    String dealerHtml = rsp.body().string();
+                    Document dealerDocument = Jsoup.parse(dealerHtml);
+                    CarDealer carDealer=new CarDealer();
+                    Element ambdrCon = dealerDocument.getElementsByClass("ambdrCon").first();
+                    String dealerName=ambdrCon.getElementsByTag("strong").first().text().split("：")[0];
+                    if(dealerName==null||dealerName.equals("")){
+                        dealerName=ambdrCon.getElementsByTag("strong").get(1).text().split("：")[0];
+                    }
+                    String contentMessage=ambdrCon.text()
+                            .replaceAll("地 址：","地址：")
+                            .replaceAll("电 话（销售热线）：","电话（销售热线）：")
+                            .split("地址：")[1].trim();
+                    String[] contentArray = contentMessage.split(" ");
+                    String address=contentArray[0];
+                    String phone=null;
+                    try {
+                        phone=contentArray[1].split("：")[1];
+                    }catch (ArrayIndexOutOfBoundsException e){
+                        phone=contentArray[2].split("：")[1];
+                    }
+                    //城市正则
+                    String cityRegex="^(.*(市))";
+                    Pattern pattern=Pattern.compile(cityRegex);
+                    Matcher matcher = pattern.matcher(address);
+                    if(matcher.find()){
+                        carDealer.setCityName(matcher.group(0));
+                    }else {
+                        if(address!=null&&address!=""){
+                            carDealer.setCityName(address.substring(0,2));
+                        }
+                    }
+                    carDealer.setBrandName(brandName);
+                    carDealer.setDealerName(dealerName);
+                    carDealer.setDealerAddress(address);
+                    carDealer.setDealerPhone(phone);
+
+                    resultList.add(carDealer);
+                    break;
+                }catch (IOException e){
+                    flag++;
+                    log.info("第"+flag+"次重试..."+e.getMessage());
+                }
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+        log.info("数据导出完成");
+    }
+
+    //广物汽贸
+    @Test
+    void testGetGuangwuqimao() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="广物汽贸经销商数据.xlsx";
+        String indexUrl="http://www.gwqm.com/index.php?m=content&c=index&a=lists&catid=38";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Element list = document.getElementsByClass("hidden sidebrand clearfix").first();
+        Elements liList = list.getElementsByTag("li");
+        for(int i=0;i<liList.size()-1;i++){
+            Element li = liList.get(i);
+            String brandName=li.text();
+            String dealerListUrl=li.getElementsByTag("a").first().attr("href");
+            Response rsp1 = OkHttpTools.getResponse(dealerListUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String dealerHtml = rsp1.body().string();
+            Document dealerDocument = Jsoup.parse(dealerHtml);
+            Elements dealerContentList = dealerDocument.getElementsByClass("zyd_dtewxt fl");
+            for (Element dealerContent : dealerContentList) {
+                CarDealer dealer=new CarDealer();
+                Elements pList = dealerContent.getElementsByTag("p");
+                String dealerName = pList.get(0).text().replaceAll("公司名称：", "");
+                String dealerAddress = pList.get(1).text().replaceAll("公司地址：", "");
+                String phone = pList.get(2).text().replaceAll("销售热线：", "");
+                //城市正则
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(dealerAddress);
+                if(matcher.find()){
+                    dealer.setCityName(matcher.group(0));
+                }else {
+                    if(dealerAddress!=null&&!dealerAddress.equals("")){
+                        dealer.setCityName(dealerAddress.substring(0,2));
+                    }else{
+                        dealer.setCityName(dealerName.substring(0,2));
+                    }
+                }
+                dealer.setBrandName(brandName);
+                dealer.setDealerAddress(dealerAddress);
+                dealer.setDealerPhone(phone);
+                dealer.setDealerName(dealerName);
+                resultList.add(dealer);
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+        log.info("数据导出完成");
+
+    }
+
+
+    //庞大汽贸V2
+    @Test
+    void testGetPangdaqimaoV2() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="庞大汽贸经销商数据.xlsx";
+        String indexUrl="http://www.pdqmjt.com/UseType.aspx?classid=19";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Element sypp = document.getElementsByClass("sypp").first();
+        Elements aList = sypp.getElementsByTag("a");
+        for (Element a : aList) {
+            String brandName=a.text();
+            String brandUrl="http://www.pdqmjt.com/"+a.attr("href");
+            Response rsp1 = OkHttpTools.getResponse(brandUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String brandHtml = rsp1.body().string();
+            Document brandDocument = Jsoup.parse(brandHtml);
+            Element span = brandDocument.getElementsByClass("col2_wz a03").first().getElementsByTag("span").first();
+            Elements a1 = span.getElementsByTag("a");
+            if(a1.size()>0){
+                String dealerUrl="http://www.pdqmjt.com/"+a1.attr("href");
+                Response rsp2 = OkHttpTools.getResponse(dealerUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                String dealerHtml = rsp2.body().string();
+                Document dealerDocument = Jsoup.parse(dealerHtml);
+                CarDealer carDealer=new CarDealer();
+                String dealerName = dealerDocument.getElementsByClass("col9wz2").first().text();
+                Elements pList = dealerDocument.getElementsByClass("col9a").first().getElementsByTag("p");
+                String phone=pList.get(1).text().split("电话：")[1];
+                String address=pList.get(2).text().split("地址：")[1];
+                //城市正则
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(address);
+                if(matcher.find()){
+                    String cityName=matcher.group(0);
+                    carDealer.setCityName(cityName);
+                }else {
+                    carDealer.setCityName(address.substring(0,2));
+                }
+                carDealer.setDealerName(dealerName);
+                carDealer.setDealerPhone(phone);
+                carDealer.setDealerAddress(address);
+                carDealer.setBrandName(brandName);
+                resultList.add(carDealer);
+            }else {
+                continue;
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //利泰集团
+    @Test
+    void testGetLitaijituan() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="利泰集团经销商数据.xlsx";
+        String indexUrl="http://www.lited.com/company.php";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String indexHtml = response.body().string();
+        Document indexDocument = Jsoup.parse(indexHtml);
+        Elements page = indexDocument.getElementsByClass("page").first().getElementsByTag("a");
+        for(int i=1;i<page.size()-1;i++){
+            Element a = page.get(i);
+            String dealerListUrl="http://www.lited.com/company.php"+a.attr("href");
+            Response rsp1 = OkHttpTools.getResponse(dealerListUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String dealerListHtml = rsp1.body().string();
+            Document dealerListDocument = Jsoup.parse(dealerListHtml);
+            Element activit = dealerListDocument.getElementById("activit");
+            Elements liList = activit.getElementsByTag("li");
+            for (Element li : liList) {
+                CarDealer carDealer=new CarDealer();
+                String dealerName = li.getElementsByTag("p").get(0).text();
+                String[]messageContent = li.getElementsByTag("p").get(2).text().split(" ");
+                String brandName=messageContent[0].split("品牌:")[1];
+                String dealerAddress=messageContent[1].split("地址:")[1];
+                //城市正则
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(dealerAddress);
+                if(matcher.find()){
+                    String cityName=matcher.group(0);
+                    carDealer.setCityName(cityName);
+                }else {
+                    carDealer.setCityName(dealerAddress.substring(0,2));
+                }
+                String dealerUrl="http://www.lited.com/"+li.getElementsByTag("p").get(0)
+                        .getElementsByTag("a").first().attr("href");
+                Response rsp2 = OkHttpTools.getResponse(dealerUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                String dealerHtml = rsp2.body().string();
+                Document dealerDocument = Jsoup.parse(dealerHtml);
+                log.info(dealerUrl);
+                try {
+                    String phone=dealerDocument.getElementsByClass("MsoNormal")
+                            .get(3).text().split("销售热线：")[1];
+                    carDealer.setDealerPhone(phone);
+                }catch (ArrayIndexOutOfBoundsException e){
+                    String phone=dealerDocument.getElementsByClass("MsoNormal")
+                            .get(4).text().split("销售热线：")[1];
+                    carDealer.setDealerPhone(phone);
+                }
+                carDealer.setDealerAddress(dealerAddress);
+                carDealer.setBrandName(brandName);
+                carDealer.setDealerName(dealerName);
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //华星汽车
+    @Test
+    void testGetHuaxingqiche() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="华星汽车经销商数据.xlsx";
+        String indexUrl="https://www.sc-hstar.com/brand";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String indexHtml = response.body().string();
+        Document indexDocument = Jsoup.parse(indexHtml);
+        Elements dealerList = indexDocument.getElementsByClass("flex1 brand-branch flex-lc");
+        List<String>brandList=new ArrayList<>();
+        brandList.add("奔驰");
+        brandList.add("奥迪");
+        brandList.add("Jeep");
+        brandList.add("现代");
+        brandList.add("大众");
+        for(int i=0;i<dealerList.size();i++){
+            Element element = dealerList.get(i);
+            String brandName=brandList.get(i);
+            Element aList = element.getElementsByTag("a").first();
+            //第一个站和其他都一样
+            String dealerListUrl = "https://www.sc-hstar.com"+aList.attr("href");
+            Response rsp1 = OkHttpTools.getResponse(dealerListUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String dealerListHtml= rsp1.body().string();
+            Document dealerListDocument = Jsoup.parse(dealerListHtml);
+            Elements dealerListElement = dealerListDocument.getElementsByClass("row nets nets-div");
+            for (Element dealerElement : dealerListElement) {
+                CarDealer carDealer=new CarDealer();
+                String dealerName = dealerElement.getElementsByClass("col-md-12 col-xs-12 nets-title").first().text();
+                String text = dealerElement.getElementsByClass("col-md-12 col-xs-12 nets-contact")
+                        .first().getElementsByTag("p").first().text()
+                        .replaceAll("销售热线：","sellPhone：")
+                        .replaceAll("销 售 热 线：","sellPhone：")
+                        .replaceAll("销售电话：","sellPhone：")
+                        .replaceAll("销售服务热线：","sellPhone：")
+                        .replaceAll("贵宾专享热线：","sellPhone：")
+                        .replaceAll("销售热线: ","sellPhone：")
+                        .replaceAll("咨询电话：","sellPhone：")
+                        .replaceAll("购车热线：","sellPhone：")
+                        .replaceAll("销售热线:","sellPhone：")
+                        .replaceAll("电话：（0731）","sellPhone：（0731）");
+                try {
+                    String address=text.split("地址：")[1].split(" ")[0].trim();
+                    carDealer.setDealerAddress(address);
+                    //城市正则
+                    String cityRegex="^(.*(市))";
+                    Pattern pattern=Pattern.compile(cityRegex);
+                    Matcher matcher = pattern.matcher(address);
+                    if(matcher.find()){
+                        carDealer.setCityName(matcher.group(0));
+                    }else{
+                        if(address!=null&&!address.equals("")){
+                            carDealer.setCityName(address.substring(0,2));
+                        }else {
+                            carDealer.setCityName(dealerName.substring(0,2));
+                        }
+                    }
+                }catch (ArrayIndexOutOfBoundsException e){
+                    carDealer.setDealerAddress("");
+                }
+                if(text.indexOf("sellPhone：")!=-1){
+                    text=text.replaceAll("售|服|转1|地"," ");
+                    String[] s = text.split("sellPhone：")[1].split(" ");
+                    try {
+                        String phone=s[0]+" "+s[1];
+                        carDealer.setDealerPhone(phone);
+                    }catch (ArrayIndexOutOfBoundsException e){
+                        String phone=s[0];
+                        carDealer.setDealerPhone(phone);
+                    }
+                }
+                carDealer.setBrandName(brandName);
+                carDealer.setDealerName(dealerName);
+                if(carDealer.getCityName().equals("")){
+                    carDealer.setCityName(dealerName.substring(0,2));
+                }
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //远通汽车集团
+    @Test
+    void testGetYuantongqichejituan() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="远通汽车经销商数据.xlsx";
+        String indexUrl="http://www.lyqgm.com/dealerships";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Elements dealerList = document.getElementsByClass("col-sm-6");
+        for (Element element : dealerList) {
+            CarDealer carDealer=new CarDealer();
+            String dealerName = element.getElementsByTag("h4").first().text();
+            String dealerAddress = element.getElementsByClass("media-body").first().getElementsByTag("p").first().text();
+            String phone = element.getElementsByClass("media-body").first()
+                    .getElementsByTag("p").get(1).text().split("售前电话：")[1];
+            String brandName = element.getElementsByClass("media-object").first().attr("alt");
+            //城市正则
+            String cityRegex="^(.*(市))";
+            Pattern pattern=Pattern.compile(cityRegex);
+            Matcher matcher = pattern.matcher(dealerAddress);
+            if(matcher.find()){
+                carDealer.setCityName(matcher.group(0));
+            }else{
+                if(dealerAddress!=null&&!dealerAddress.equals("")){
+                    carDealer.setCityName(dealerAddress.substring(0,2));
+                }else {
+                    carDealer.setCityName(dealerName.substring(0,2));
+                }
+            }
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerName(dealerName);
+            carDealer.setBrandName(brandName);
+            carDealer.setDealerAddress(dealerAddress);
+            resultList.add(carDealer);
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
     }
 }
