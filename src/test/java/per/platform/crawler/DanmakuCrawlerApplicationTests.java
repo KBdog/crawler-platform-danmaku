@@ -2714,6 +2714,294 @@ class DanmakuCrawlerApplicationTests {
         exportExcel(excelOutPutDir,companyName,resultList);
     }
 
+    //河北国和
+    @Test
+    void testGetHebeiguohe() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="河北国和经销商数据.xlsx";
+        String indexUrl="http://www.hbsgh.com/wscs_pinpai.jsp#";
+        //电话和地址为空的经销商
+        List<String>defaultDealerList=new ArrayList<>();
+        defaultDealerList.add("邢台国和同运汽车贸易有限公司");
+        defaultDealerList.add("石家庄荟萃汽车销售技术服务有限公司");
+        defaultDealerList.add("河北国和腾朗汽车销售服务有限公司");
+        defaultDealerList.add("邯郸市盛华汽车贸易有限公司");
+        defaultDealerList.add("河北众捷汽车贸易有限公司");
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Elements dealerList = document.select("div[id=wscs_quyu_dealer_right]");
+        for (Element dealerElement : dealerList) {
+            String regex="主营品牌：|销售热线：|地 址：";
+            String []messageArray=dealerElement.text().replaceAll(regex,"").split(" ");
+            CarDealer carDealer=new CarDealer();
+            String dealerName=messageArray[0];
+            String brandName=messageArray[1];
+            if(defaultDealerList.contains(dealerName)){
+                carDealer.setDealerAddress("");
+                carDealer.setDealerPhone("");
+            }else {
+                carDealer.setDealerAddress(messageArray[5]);
+                carDealer.setDealerPhone(messageArray[3]);
+            }
+            if(!carDealer.getDealerAddress().equals("")){
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(carDealer.getDealerAddress());
+                if(matcher.find()){
+                    carDealer.setCityName(matcher.group(0));
+                }
+            }
+            carDealer.setBrandName(brandName);
+            carDealer.setDealerName(dealerName);
+            resultList.add(carDealer);
+            System.out.println(dealerElement.text());
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //庆丰汽车
+    @Test
+    void testGetQingfengqiche() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="庆丰汽车经销商数据.xlsx";
+        String indexUrl="http://www.qfcars.com/Content/462668.html";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Elements dealerList = document.getElementsByClass("col-xs-7 col-md-6 ModuleImageTextGiantContent ModuleImageTextContent ");
+        for (Element dealerElement : dealerList) {
+            CarDealer carDealer=new CarDealer();
+            Elements pList = dealerElement.getElementsByTag("p");
+            String dealerName = pList.get(1).text();
+            String address = pList.get(2).text().replaceAll("地址：", "");
+            String phone = pList.get(3).text().replaceAll("客服电话：", "");
+            String cityRegex="^(.*(市))";
+            Pattern pattern=Pattern.compile(cityRegex);
+            Matcher matcher = pattern.matcher(address);
+            if(matcher.find()){
+                carDealer.setCityName(matcher.group(0));
+            }else {
+                if(!address.equals("")){
+                    carDealer.setCityName(address.substring(0,2));
+                }
+            }
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerAddress(address);
+            carDealer.setDealerName(dealerName);
+            resultList.add(carDealer);
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //锦鸿集团
+    @Test
+    void testGetJinhongjituan() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="锦鸿集团经销商数据.xlsx";
+        Map<String,String>brandMap=new HashMap<>();
+        brandMap.put("东风本田","http://www.jhqcjt.com/news/8/");
+        brandMap.put("广汽本田","http://www.jhqcjt.com/news/12/");
+        brandMap.put("广汽丰田","http://www.jhqcjt.com/news/10/");
+        for(Map.Entry<String,String>brand:brandMap.entrySet()){
+            String brandName = brand.getKey();
+            String brandUrl = brand.getValue();
+            Response response = OkHttpTools.getResponse(brandUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String pageHtml = response.body().string();
+            Document document = Jsoup.parse(pageHtml);
+            Elements dealerList = document.getElementsByClass("spbq p_articles{");
+            for (Element dealerElement : dealerList) {
+                CarDealer carDealer=new CarDealer();
+                String dealerName = dealerElement.getElementsByTag("h2").first().text();
+                System.out.println(dealerName);
+                String dealerUrl="http://www.jhqcjt.com"+dealerElement
+                        .getElementsByTag("a").first().attr("href");
+                Response rsp1 = OkHttpTools.getResponse(dealerUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                String dealerHtml = rsp1.body().string();
+                Document dealerDocument = Jsoup.parse(dealerHtml);
+                Elements pList = dealerDocument.getElementsByClass("reset_style")
+                        .get(1).getElementsByTag("p");
+                String phone = pList.get(1).text().replaceAll("服务专线：", "");
+                String address = pList.get(2).text().replaceAll("地址：", "");
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(address);
+                if(matcher.find()){
+                    carDealer.setCityName(matcher.group(0));
+                }else{
+                    carDealer.setCityName(address.substring(0,2));
+                }
+                carDealer.setDealerPhone(phone);
+                carDealer.setDealerName(dealerName);
+                carDealer.setBrandName(brandName);
+                carDealer.setDealerAddress(address);
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //申湘汽车
+    @Test
+    void testGetShenxiangqiche() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="申湘汽车经销商数据.xlsx";
+        Map<String,String>brandMap=new HashMap<>();
+        brandMap.put("凯迪拉克","http://www.hnsxqc.com/Product/?6-1.html");
+        brandMap.put("通用别克","http://www.hnsxqc.com/Product/?19-1.html");
+        brandMap.put("雪佛兰","http://www.hnsxqc.com/Product/?20-1.html");
+        brandMap.put("上汽大众","http://www.hnsxqc.com/Product/?21-1.html");
+        brandMap.put("一汽丰田","http://www.hnsxqc.com/Product/?22-1.html");
+        brandMap.put("上汽荣威","http://www.hnsxqc.com/Product/?23-1.html");
+        brandMap.put("斯柯达","http://www.hnsxqc.com/Product/?24-1.html");
+        for(Map.Entry<String,String>brand:brandMap.entrySet()){
+            String brandName = brand.getKey();
+            String brandUrl = brand.getValue();
+            Response response = OkHttpTools.getResponse(brandUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            byte[] bytes = response.body().bytes();
+            String pageHtml = new String(bytes,"gbk");
+            Document document = Jsoup.parse(pageHtml);
+            Elements dealerList = document.getElementsByClass(" fadeInUp wow");
+            for (Element dealerElement : dealerList) {
+                CarDealer carDealer=new CarDealer();
+                String dealerName = dealerElement.getElementsByTag("h3").first().text();
+                System.out.println(dealerName);
+                Elements pList = dealerElement.getElementsByTag("p");
+                String phone = pList.get(0).getElementsByTag("a").first().text();
+                String address = pList.get(pList.size() - 1).text().replaceAll("公司地址：", "");
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(address);
+                if(matcher.find()){
+                    carDealer.setCityName(matcher.group(0));
+                }else{
+                    carDealer.setCityName(address.substring(0,2));
+                }
+                carDealer.setDealerPhone(phone);
+                carDealer.setDealerName(dealerName);
+                carDealer.setDealerAddress(address);
+                carDealer.setBrandName(brandName);
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //建银华盛
+    @Test
+    void testGetjianyinhuasheng() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="建银华盛经销商数据.xlsx";
+        String indexUrl="http://www.jyhsjt.com/index.php/index-carmap";
+        Response response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Elements dealerList = document.getElementsByClass("bus_list");
+        for (Element dealerElement : dealerList) {
+            CarDealer carDealer=new CarDealer();
+            String dealerName = dealerElement.getElementsByTag("h3").first().text();
+            String []messageArray=dealerElement.getElementsByClass("fr").first()
+                    .getElementsByTag("p").first().text().split(" ");
+            String brandName=messageArray[0].replaceAll("品牌：","");
+            String phone=messageArray[1].replaceAll("电话：","");
+            String address=messageArray[2].replaceAll("地址：","");
+            String cityRegex="^(.*(市))";
+            Pattern pattern=Pattern.compile(cityRegex);
+            Matcher matcher = pattern.matcher(address);
+            if(matcher.find()){
+                carDealer.setCityName(matcher.group(0));
+            }else{
+                carDealer.setCityName(address.substring(0,2));
+            }
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerName(dealerName);
+            carDealer.setBrandName(brandName);
+            carDealer.setDealerAddress(address);
+            resultList.add(carDealer);
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
+
+    //江苏海鹏
+    @Test
+    void testGetJiangsuhaipeng() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="江苏海鹏经销商数据.xlsx";
+        String indexUrl_1="http://www.jshaipeng.net/pinpai.php?/20.html";
+        String indexUrl_2="http://www.jshaipeng.net/pinpai.php?/19.html";
+        List<String>brandList=new ArrayList<>();
+        brandList.add("凯迪拉克");
+        brandList.add("别克");
+        brandList.add("雪佛兰");
+        brandList.add("上汽大通");
+        brandList.add("一汽-大众");
+        brandList.add("北京现代");
+        brandList.add("东风日产");
+        brandList.add("领克");
+        brandList.add("奔驰");
+        brandList.add("吉利");
+        //江阴
+        Response response = OkHttpTools.getResponse(indexUrl_1, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml = new String(response.body().bytes(),"gbk");
+        Document document = Jsoup.parse(pageHtml);
+        Elements news = document.getElementsByClass("news");
+        for(int i=1;i<news.size();i++){
+            String city="江阴市";
+            CarDealer carDealer=new CarDealer();
+            Element element = news.get(i);
+            String dealerUrl="http://www.jshaipeng.net/"+element.getElementsByClass("tittle").first()
+                    .getElementsByTag("a").first().attr("href");
+            Response rsp1 = OkHttpTools.getResponse(dealerUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String dealerHtml = new String(rsp1.body().bytes(),"gbk");
+            Document dealerDocument = Jsoup.parse(dealerHtml);
+            Elements pList = dealerDocument.getElementsByClass("nr_show").first().getElementsByTag("p");
+            String dealerName = pList.get(1).text();
+            String address = pList.get(2).text().replaceAll("地址：","");
+            String phone = pList.get(3).text().replaceAll("销售热线：", "");
+            for (String brandName : brandList) {
+                if(dealerName.indexOf(brandName)!=-1){
+                    carDealer.setBrandName(brandName);
+                    break;
+                }
+            }
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerAddress(address);
+            carDealer.setDealerName(dealerName);
+            carDealer.setCityName(city);
+            resultList.add(carDealer);
+        }
+        //泰州
+        Response rsp2 = OkHttpTools.getResponse(indexUrl_2, Constant.DEFAULT_HEADERS_BUILDER, client);
+        String pageHtml1 = new String(rsp2.body().bytes(),"gbk");
+        Document document1 = Jsoup.parse(pageHtml1);
+        Elements news1 = document1.getElementsByClass("news");
+        for(int i=1;i<news1.size();i++){
+            String city="泰州市";
+            CarDealer carDealer=new CarDealer();
+            Element element = news1.get(i);
+            String dealerUrl="http://www.jshaipeng.net/"+element.getElementsByClass("tittle").first()
+                    .getElementsByTag("a").first().attr("href");
+            Response rsp1 = OkHttpTools.getResponse(dealerUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String dealerHtml = new String(rsp1.body().bytes(),"gbk");
+            Document dealerDocument = Jsoup.parse(dealerHtml);
+            Elements pList = dealerDocument.getElementsByClass("nr_show").first().getElementsByTag("p");
+            String dealerName = pList.get(1).text();
+            String address = pList.get(2).text().replaceAll("地址：","");
+            String phone = pList.get(3).text().replaceAll("销售热线：", "");
+            for (String brandName : brandList) {
+                if(dealerName.indexOf(brandName)!=-1||address.indexOf(brandName)!=-1){
+                    carDealer.setBrandName(brandName);
+                    break;
+                }
+            }
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerAddress(address);
+            carDealer.setDealerName(dealerName);
+            carDealer.setCityName(city);
+            resultList.add(carDealer);
+        }
+        exportExcel(excelOutPutDir,companyName,resultList);
+    }
 
 
 }
