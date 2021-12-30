@@ -26,11 +26,11 @@ import per.platform.crawler.utils.JSONTools;
 import per.platform.crawler.utils.OkHttpTools;
 
 import java.io.*;
+import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -3412,6 +3412,453 @@ class DanmakuCrawlerApplicationTests {
             }
         }
         exportExcel(excelOutPutDirPart3,companyName,resultList);
+    }
+
+    //保定轩宇俊鹏
+    @Test
+    void testGetBaodingxuanyu() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="保定轩宇俊鹏经销商数据.xlsx";
+        Map<String,String>brandMap=new HashMap<>();
+        brandMap.put("保时捷","http://www.xuanyugroup.com/brand/detail?id=1001");
+        brandMap.put("奔驰","http://www.xuanyugroup.com/brand/detail?id=1003");
+        brandMap.put("宝马","http://www.xuanyugroup.com/brand/detail?id=1004");
+        brandMap.put("奥迪","http://www.xuanyugroup.com/brand/detail?id=1005");
+        brandMap.put("捷豹","http://www.xuanyugroup.com/brand/detail?id=1006");
+        brandMap.put("路虎","http://www.xuanyugroup.com/brand/detail?id=1007");
+        brandMap.put("林肯","http://www.xuanyugroup.com/brand/detail?id=1009");
+        brandMap.put("雷克萨斯","http://www.xuanyugroup.com/brand/detail?id=1010");
+        brandMap.put("凯迪拉克","http://www.xuanyugroup.com/brand/detail?id=1011");
+        brandMap.put("沃尔沃","http://www.xuanyugroup.com/brand/detail?id=1013");
+        brandMap.put("MINI","http://www.xuanyugroup.com/brand/detail?id=1015");
+        brandMap.put("大众","http://www.xuanyugroup.com/brand/detail?id=1017");
+        brandMap.put("别克","http://www.xuanyugroup.com/brand/detail?id=1018");
+        brandMap.put("雪佛兰","http://www.xuanyugroup.com/brand/detail?id=1019");
+        brandMap.put("福特","http://www.xuanyugroup.com/brand/detail?id=1020");
+        brandMap.put("一汽丰田","http://www.xuanyugroup.com/brand/detail?id=1021");
+        brandMap.put("广汽丰田","http://www.xuanyugroup.com/brand/detail?id=1022");
+        brandMap.put("东风本田","http://www.xuanyugroup.com/brand/detail?id=1023");
+        brandMap.put("广汽本田","http://www.xuanyugroup.com/brand/detail?id=1024");
+        brandMap.put("东风日产","http://www.xuanyugroup.com/brand/detail?id=1026");
+        brandMap.put("Jeep","http://www.xuanyugroup.com/brand/detail?id=1028");
+        brandMap.put("克莱斯勒","http://www.xuanyugroup.com/brand/detail?id=1029");
+        brandMap.put("道奇","http://www.xuanyugroup.com/brand/detail?id=1031");
+        for(Map.Entry<String,String>brand:brandMap.entrySet()){
+            String brandName=brand.getKey();
+            String brandUrl = brand.getValue();
+            Response response = OkHttpTools.getResponse(brandUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            String pageHtml = response.body().string();
+            Document document = Jsoup.parse(pageHtml);
+            Elements dealerList = document.getElementsByClass("company-item");
+            for (Element dealerElement : dealerList) {
+                CarDealer carDealer=new CarDealer();
+                String dealerName = dealerElement.getElementsByClass("company-name").first().text();
+                String address = dealerElement.getElementsByClass("company-address").first().text();
+                String phone=dealerElement.getElementsByClass("bottom-left").first()
+                        .getElementsByTag("p").first()
+                        .text().replaceAll("销售热线：","");
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(address);
+                if(matcher.find()){
+                    carDealer.setCityName(matcher.group(0));
+                }else{
+                    carDealer.setCityName(address.substring(0,2));
+                }
+                carDealer.setDealerPhone(phone);
+                carDealer.setDealerName(dealerName);
+                carDealer.setDealerAddress(address);
+                carDealer.setBrandName(brandName);
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDirPart3,companyName,resultList);
+    }
+
+    //百事达汽车
+    @Test
+    void testBaishidaqiche() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="百事达汽车经销商数据.xlsx";
+        Map<String,String>brandMap=new HashMap<>();
+        brandMap.put("奥迪","http://www.bescar.com/col.jsp?id=146");
+        brandMap.put("奔驰","http://www.bescar.com/col.jsp?id=147");
+        brandMap.put("凯迪拉克","http://www.bescar.com/col.jsp?id=148");
+        brandMap.put("大众进口","http://www.bescar.com/col.jsp?id=149");
+        brandMap.put("上汽大众","http://www.bescar.com/col.jsp?id=150");
+        brandMap.put("一汽大众","http://www.bescar.com/col.jsp?id=151");
+        brandMap.put("一汽丰田","http://www.bescar.com/col.jsp?id=152");
+        brandMap.put("广汽丰田","http://www.bescar.com/col.jsp?id=153");
+        brandMap.put("上汽通用别克","http://www.bescar.com/col.jsp?id=154");
+        brandMap.put("东风本田","http://www.bescar.com/col.jsp?id=155");
+        brandMap.put("上汽大众斯柯达","http://www.bescar.com/col.jsp?id=156");
+        brandMap.put("上汽通用雪佛兰","http://www.bescar.com/col.jsp?id=157");
+        brandMap.put("综合门店","http://www.bescar.com/col.jsp?id=158");
+        for(Map.Entry<String,String>brand:brandMap.entrySet()){
+            String brandName = brand.getKey();
+            String brandUrl = brand.getValue();
+            driver.get(brandUrl);
+            Document document = DriverTools.parseCurrentWebPage(15, driver);
+            Elements dealerList = document.getElementsByClass("web_col_content");
+            for(int i=3;i<dealerList.size();i++){
+                CarDealer carDealer=new CarDealer();
+                Element dealerElement = dealerList.get(i);
+                String messageContent=dealerElement.text().trim();
+                if(messageContent.equals("")||messageContent.indexOf("版权所有")!=-1){
+                    continue;
+                }
+                String[] messageArray = messageContent.split(" ");
+                String dealerName=messageArray[0];
+                String address=messageArray[1].replaceAll("联系地址：","");
+                String phone=messageArray[3].replaceAll("销售电话：","");
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(address);
+                if(matcher.find()){
+                    carDealer.setCityName(matcher.group(0));
+                }else{
+                    carDealer.setCityName(address.substring(0,2));
+                }
+                carDealer.setBrandName(brandName);
+                carDealer.setDealerAddress(address);
+                carDealer.setDealerPhone(phone);
+                carDealer.setDealerName(dealerName);
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDirPart3,companyName,resultList);
+    }
+
+    //东安控股
+    @Test
+    void testDongankonggu() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="东安控股经销商数据.xlsx";
+        Map<String,String>autohomeBrandMap=new HashMap<>();
+        autohomeBrandMap.put("宝马","https://dealer.autohome.com.cn/2022026/#pvareaid=2113375");
+        autohomeBrandMap.put("上汽大众","https://dealer.autohome.com.cn/2025546/");
+        autohomeBrandMap.put("一汽大众","https://dealer.autohome.com.cn/121991");
+        autohomeBrandMap.put("广汽丰田","https://dealer.autohome.com.cn/2006722/");
+        autohomeBrandMap.put("东风本田","https://dealer.autohome.com.cn/72986");
+        autohomeBrandMap.put("广汽本田","https://dealer.autohome.com.cn/2071351/");
+        autohomeBrandMap.put("哈弗","https://dealer.autohome.com.cn/2109150/");
+        Map<String,String>yicheBrandMap=new HashMap<>();
+        yicheBrandMap.put("宝马","https://dealer.yiche.com/100064191/index.html");
+        yicheBrandMap.put("奥迪","https://dealer.yiche.com/100039750/index.html");
+        yicheBrandMap.put("上汽大众","https://dealer.yiche.com/100066393/index.html");
+        yicheBrandMap.put("东风本田","https://dealer.yiche.com/100132165/");
+        yicheBrandMap.put("哈弗","https://dealer.yiche.com/100035125");
+        yicheBrandMap.put("北京汽车","https://dealer.yiche.com/100023351/");
+        yicheBrandMap.put("长安欧尚","https://dealer.yiche.com/100028321/index.html");
+        for(Map.Entry<String,String>brand:autohomeBrandMap.entrySet()){
+            CarDealer carDealer=new CarDealer();
+            String brandName = brand.getKey();
+            String brandUrl = brand.getValue();
+            driver.get(brandUrl);
+            Document document = DriverTools.parseCurrentWebPage(15,driver);
+            Element dealerElement = document.getElementsByClass("allagency-cont").first();
+            String dealerName = dealerElement.getElementById("starLevel").text();
+            String phone=dealerElement.getElementsByClass("phone").first().text().replaceAll("咨询电话：","");
+            String address = dealerElement.getElementsByClass("address").first().attr("title");
+            String cityRegex="^(.*(市))";
+            Pattern pattern=Pattern.compile(cityRegex);
+            Matcher matcher = pattern.matcher(address);
+            if(matcher.find()){
+                carDealer.setCityName(matcher.group(0));
+            }else{
+                carDealer.setCityName(address.substring(0,2));
+            }
+            carDealer.setBrandName(brandName);
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerName(dealerName);
+            carDealer.setDealerAddress(address);
+            resultList.add(carDealer);
+        }
+        for(Map.Entry<String,String>brand:yicheBrandMap.entrySet()){
+            CarDealer carDealer=new CarDealer();
+            String brandName = brand.getKey();
+            String brandUrl = brand.getValue();
+            driver.get(brandUrl);
+            Document document = DriverTools.parseCurrentWebPage(15,driver);
+            Element dealerElement = document.getElementsByClass("jxs_info  index_card").first();
+            String dealerName = dealerElement.getElementsByTag("h2").first().text();
+            String phone = dealerElement.getElementsByClass("info_c").first().text();
+            String address = dealerElement.getElementsByClass("ads").first().attr("title");
+            String cityRegex="^(.*(市))";
+            Pattern pattern=Pattern.compile(cityRegex);
+            Matcher matcher = pattern.matcher(address);
+            if(matcher.find()){
+                carDealer.setCityName(matcher.group(0));
+            }else{
+                carDealer.setCityName(address.substring(0,2));
+            }
+            carDealer.setDealerAddress(address);
+            carDealer.setDealerPhone(phone);
+            carDealer.setDealerName(dealerName);
+            carDealer.setBrandName(brandName);
+            resultList.add(carDealer);
+        }
+        exportExcel(excelOutPutDirPart3,companyName,resultList);
+    }
+
+    //陕西汽贸
+    @Test
+    void testGetShanxiqimao() throws IOException {
+        List<CarDealer>resultList=new ArrayList<>();
+        String companyName="陕西汽贸经销商数据.xlsx";
+        Map<String,String>brandMap=new HashMap<>();
+        brandMap.put("上汽大众","http://www.sxsqm.com/jypp_xx.php?id=2");
+        brandMap.put("长安福特","http://www.sxsqm.com/jypp_xx.php?id=3");
+        brandMap.put("长安汽车","http://www.sxsqm.com/jypp_xx.php?id=1");
+        brandMap.put("斯柯达","http://www.sxsqm.com/jypp_xx.php?id=16");
+        brandMap.put("中国一汽","http://www.sxsqm.com/jypp_xx.php?id=17");
+        brandMap.put("合创","http://www.sxsqm.com/jypp_xx.php?id=21");
+        brandMap.put("长安欧尚","http://www.sxsqm.com/jypp_xx.php?id=22");
+        brandMap.put("宝骏","http://www.sxsqm.com/jypp_xx.php?id=23");
+        brandMap.put("金杯","http://www.sxsqm.com/jypp_xx.php?id=25");
+        brandMap.put("五菱","http://www.sxsqm.com/jypp_xx.php?id=26");
+        brandMap.put("福田汽车","http://www.sxsqm.com/jypp_xx.php?id=28");
+        brandMap.put("领跑汽车","http://www.sxsqm.com/jypp_xx.php?id=29");
+        brandMap.put("哈弗","http://www.sxsqm.com/jypp_xx.php?id=30");
+        for(Map.Entry<String,String>brand:brandMap.entrySet()){
+            String brandName = brand.getKey();
+            String brandUrl = brand.getValue();
+            Response response = OkHttpTools.getResponse(brandUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+            Document document = Jsoup.parse(response.body().string());
+            Elements titleList = document.getElementsByClass("ny_jypp4_zhong");
+            Elements messageContent = document.getElementsByClass("ny_jypp5_zuo");
+            for(int i=0;i<titleList.size();i++){
+                CarDealer carDealer=new CarDealer();
+                String dealerName = titleList.get(i).text();
+                String[] messageArray = messageContent.get(i).text().replaceAll("电话：|地址：", "").split(" ");
+                String phone=messageArray[0];
+                String address=messageArray[1];
+                String cityRegex="^(.*(市))";
+                Pattern pattern=Pattern.compile(cityRegex);
+                Matcher matcher = pattern.matcher(address);
+                if(matcher.find()){
+                    carDealer.setCityName(matcher.group(0));
+                }else{
+                    carDealer.setCityName(address.substring(0,2));
+                }
+                carDealer.setDealerName(dealerName);
+                carDealer.setDealerPhone(phone);
+                carDealer.setDealerAddress(address);
+                carDealer.setBrandName(brandName);
+                resultList.add(carDealer);
+            }
+        }
+        exportExcel(excelOutPutDirPart3,companyName,resultList);
+    }
+
+    //获取易车裸车价
+    @Test
+    void testGetYicheluoche() throws IOException {
+        SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        long startTime = System.currentTimeMillis();
+        Date startDate = new Date(startTime);
+        System.out.println("任务开始:"+format.format(startDate));
+
+        //线程池2
+        ExecutorService es2 = Executors.newFixedThreadPool(10);
+        CompletionService<String> threadPool2 = new ExecutorCompletionService<String>(es2);
+        //线程池3
+        ExecutorService es3 = Executors.newFixedThreadPool(10);
+        CompletionService<String> threadPool3 = new ExecutorCompletionService<String>(es3);
+        //一次性获取全部城市id
+        String cityUrl="https://luochejia.yiche.com/web_api/web_app/api/v1/city/get_area_list";
+        Response cityResponse =null;
+        while(true){
+            try {
+                cityResponse = OkHttpTools.getResponse(cityUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                break;
+            }catch (IOException e){
+
+            }
+        }
+        String jsonString = cityResponse.body().string();
+        JSONObject jsonObject = JSONObject.parseObject(jsonString);
+        JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONArray("list");
+        Map<Integer,String>cityMap=new HashMap<>();
+        for(int i=0;i<jsonArray.size();i++){
+            JSONObject cityObj = jsonArray.getJSONObject(i);
+            Integer cityId = cityObj.getInteger("CityId");
+            String cityName = cityObj.getString("CityName");
+            cityMap.put(cityId,cityName);
+        }
+        System.out.println("全部城市抓取完毕");
+        String indexUrl="https://car.yiche.com/xuanchegongju/?mid=9";
+        Response response =null;
+        while(true){
+            try {
+                response = OkHttpTools.getResponse(indexUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                break;
+            }catch (IOException e){
+
+            }
+        }
+        String pageHtml = response.body().string();
+        Document document = Jsoup.parse(pageHtml);
+        Elements brandList = document.getElementsByClass("brand-list-item");
+        for (Element brandElement : brandList) {
+            String letter=brandElement.attr("data-index");
+            System.out.println(letter);
+            Elements brandItemList = brandElement.getElementsByClass("item-brand");
+            for (Element brand : brandItemList) {
+                String brandName = brand.attr("data-name");
+                String brandUrl="https://car.yiche.com"+brand.getElementsByTag("a")
+                        .first().attr("href");
+                Response rsp1=null;
+                while(true){
+                    try {
+                        rsp1 = OkHttpTools.getResponse(brandUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                        break;
+                    }catch (IOException e){
+
+                    }
+                }
+                String brandHtml = rsp1.body().string();
+                Document brandDocument = Jsoup.parse(brandHtml);
+                try {
+                    Elements aList = brandDocument.getElementsByClass("link-list pg-item")
+                            .first().getElementsByTag("a");
+                    System.out.println("-"+brandName+"---"+aList.size());
+                    for (Element aElement : aList) {
+                        String nextPage="https://car.yiche.com"+aElement.attr("href");
+                        Response rsp2 = null;
+                        while(true){
+                            try {
+                                rsp2 = OkHttpTools.getResponse(nextPage, Constant.DEFAULT_HEADERS_BUILDER, client);
+                                break;
+                            }catch (IOException e){
+
+                            }
+                        }
+                        String nextPageHtml = rsp2.body().string();
+                        Document nextPageDocument = Jsoup.parse(nextPageHtml);
+                        Elements carSerialList = nextPageDocument.getElementsByClass("search-result-list-item");
+                        System.out.println(" --共有车系数量:"+carSerialList.size()+" "+nextPage);
+                        //根据车系幅度来并发
+                        for (Element serialElement : carSerialList) {
+                            //线程提交任务
+                            threadPool.submit(new Callable<String>() {
+                                @Override
+                                public String call() throws Exception {
+                                    String serialUrl="https://luochejia.yiche.com"+serialElement.getElementsByTag("a")
+                                            .first().attr("href")+"price/?year=0";
+                                    String serialName=serialElement.getElementsByTag("a").first()
+                                            .getElementsByClass("cx-name text-hover").first().text();
+                                    Response rsp3 =null;
+                                    while(true){
+                                        try {
+                                            rsp3 = OkHttpTools.getResponse(serialUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                                            break;
+                                        }catch (IOException e){
+
+                                        }
+                                    }
+                                    String serialHtml = rsp3.body().string();
+                                    Document serialDocument = Jsoup.parse(serialHtml);
+                                    Elements pageSizeElement = serialDocument.getElementsByClass("sizes pg-item");
+                                    if(pageSizeElement!=null&&pageSizeElement.size()>0){
+                                        //线程池2
+                                        for(Map.Entry<Integer,String>city:cityMap.entrySet()){
+                                            threadPool2.submit(new Callable<String>() {
+                                                @Override
+                                                public String call() throws Exception {
+                                                    Integer cityId = city.getKey();
+                                                    String cityName = city.getValue();
+                                                    Integer pageSize=Integer.parseInt(pageSizeElement.first().getElementsByTag("span").first().text());
+                                                    for(int i=1;i<=pageSize;i++){
+                                                        String nextSerialPageUrl=serialUrl+"&page="+i+"&cityid="+cityId;
+                                                        Response rsp4=null;
+                                                        while(true){
+                                                            try {
+                                                                rsp4 = OkHttpTools.getResponse(nextSerialPageUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                                                                break;
+                                                            }catch (IOException e){
+
+                                                            }
+                                                        }
+                                                        String nextSerialHtml = rsp4.body().string();
+                                                        Document nextSerialDocument = Jsoup.parse(nextSerialHtml);
+                                                        Elements modelList = nextSerialDocument.getElementsByClass("lcjd-desc");
+                                                        for (Element model : modelList) {
+                                                            System.out.println("  ---"+cityName+"---"+letter+"---"+brandName+"---"+serialName+"---"+model.text());
+                                                        }
+                                                    }
+                                                    return null;
+                                                }
+                                            });
+
+                                        }
+                                        for(Map.Entry<Integer,String>city:cityMap.entrySet()){
+                                            threadPool2.take().get();
+                                        }
+                                    }else {
+                                        //线程池3
+                                        for(Map.Entry<Integer,String>city:cityMap.entrySet()){
+                                            threadPool3.submit(new Callable<String>() {
+                                                @Override
+                                                public String call() throws Exception {
+                                                    Integer cityId = city.getKey();
+                                                    String cityName = city.getValue();
+                                                    String nextCityUrl=serialUrl+"&cityid="+cityId;
+                                                    Response rsp5=null;
+                                                    while(true){
+                                                        try {
+                                                            rsp5 = OkHttpTools.getResponse(nextCityUrl, Constant.DEFAULT_HEADERS_BUILDER, client);
+                                                            break;
+                                                        }catch (IOException e){
+
+                                                        }
+                                                    }
+                                                    String nextSerialHtml = rsp5.body().string();
+                                                    Document nextSerialDocument = Jsoup.parse(nextSerialHtml);
+                                                    Elements modelList = nextSerialDocument.getElementsByClass("lcjd-desc");
+                                                    for (Element model : modelList) {
+                                                        System.out.println("  ---"+cityName+"---"+letter+"---"+brandName+"---"+serialName+"---"+model.text());
+                                                    }
+                                                    return null;
+                                                }
+                                            });
+                                        }
+                                        for(Map.Entry<Integer,String>city:cityMap.entrySet()){
+                                            threadPool3.take().get();
+                                        }
+                                    }
+                                    return null;
+                                }
+                            });
+                        }
+                        //线程阻塞  线程池1
+                        for (Element serialElement : carSerialList){
+                            try {
+                                String s = threadPool.take().get();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            } catch (ExecutionException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }catch (NullPointerException e){
+                    continue;
+                }
+            }
+        }
+        long endTime = System.currentTimeMillis();
+        Date endDate = new Date(endTime);
+        //总耗时（毫秒）
+        long time=endTime-startTime;
+        //秒
+        Double secondTime=new Double(time/1000);
+        //分
+        String minTime = String.format("%.2f", (secondTime / 60));
+        //时
+        String hourTime = String.format("%.2f", (secondTime / 60 / 60));
+        System.out.println("任务结束:"+format.format(endDate));
+        System.out.println("全部数据抓取完毕！共耗时"+time+"ms,整合"+secondTime+"s,"+minTime+"min,"+hourTime+"hour");
     }
 
 }
