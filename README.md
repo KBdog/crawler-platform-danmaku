@@ -1,5 +1,5 @@
 ## 实时抓取各大直播平台的弹幕的简单springboot项目
-上班摸鱼写的，闲着蛋疼
+摸鱼写的
 
 ### 使用技术或依赖
 selenium、jsoup、springboot、poi、chromedriver
